@@ -4,7 +4,7 @@
 
 ## 1. 문서 목적
 
-이 문서는 ilque의 기획, 도메인, 핵심 비즈니스 규칙, 기능 범위 및 기술 방향을 개발 과정에서 참고하기 위한 프로젝트 기준 문서입니다.
+이 문서는 ilque의 기획, 도메인, 핵심 비즈니스 규칙, 기능 범위 및 기술 방향을 개발 과정에서 참고하기 위한 프로젝트 기준 문서입니다. 본 문서는 설계의 Source of Truth이며, 구현 상세는 본 문서의 설계 결정을 변경하지 않습니다.
 
 세부 구현 규칙은 각 `agent.md`를 따릅니다.
 
@@ -65,6 +65,22 @@ ResetPolicy ──< Quest
 Category ──< CalendarEvent (선택)
 ```
 
+### 4.1 User와 Identity
+
+ilque MVP는 개인용 데스크탑 앱이며, 회원가입과 로그인 기능을 제공하지 않습니다. 다만 `User`는 사용자 소유 데이터의 기준 Entity로 유지합니다.
+
+- 앱 최초 실행 시 Local User가 없으면 기본 Local User를 생성합니다.
+- 이후 생성된 Local User를 현재 사용자로 사용합니다.
+- `Quest`, `QuickTodo`, `CalendarEvent`, `UserAchievement`는 모두 User가 소유하는 데이터입니다.
+
+MVP에서는 다음을 구현하지 않습니다.
+
+- 회원가입, 로그인, 비밀번호
+- OAuth, JWT
+- 멀티 사용자, 서버 계정
+
+이 관계는 향후 서버 기반 계정 및 멀티 디바이스 동기화로 확장할 때에도 유지합니다.
+
 ## 5. Quest
 
 Quest는 반복적으로 관리할 가치가 있는 행동의 영구적인 정의입니다.
@@ -93,6 +109,20 @@ Quest는 반복적으로 관리할 가치가 있는 행동의 영구적인 정�
 - 실제 특정 주기의 수행 상태는 QuestExecution이 담당합니다.
 - Quest가 삭제되어도 기존 QuestExecution History는 보존합니다.
 
+### RecurrenceType과 CUSTOM 범위
+
+`RecurrenceType`은 Quest가 어떤 날 또는 주기에 수행 대상이 되는지를 결정합니다. MVP의 `CUSTOM`은 사용자가 선택한 요일에 반복되는 Quest만 의미합니다.
+
+예: 월/수/금, 화/목
+
+MVP의 `CUSTOM`은 요일 선택형 반복으로 제한하며, 다음은 지원하지 않습니다.
+
+- N일마다 반복
+- 2주마다 반복
+- 매월 특정 날짜 또는 매월 마지막 날
+- 복잡한 간격 반복
+- 자연어 반복 규칙
+
 ## 6. QuestExecution
 
 QuestExecution은 Quest의 특정 수행 주기에 대한 실제 수행 기록입니다.
@@ -114,7 +144,10 @@ FocusSession은 하나의 Execution에 여러 개 연결될 수 있으며, 분�
 
 ## 7. ResetPolicy와 Execution 생성
 
-RecurrenceType은 언제 반복되는지를 정의하고, ResetPolicy는 수행 주기의 경계를 정의합니다.
+`RecurrenceType`은 Quest가 언제 수행 대상이 되는지를 결정하고, `ResetPolicy`는 해당 수행 주기의 시작/종료 경계를 결정합니다. 두 책임은 서로 대체하지 않습니다.
+
+- `RecurrenceType`: `ONCE`, `DAILY`, `WEEKLY`, `CUSTOM` 및 `CUSTOM`의 선택 요일에 따라 수행 대상을 판단합니다.
+- `ResetPolicy`: 설정된 `resetTime`, `timezone`, `weekStartDay`를 기준으로 Execution의 `periodStart`와 `periodEnd`를 계산합니다.
 
 ### ResetPolicy 필드
 
@@ -357,7 +390,7 @@ Electron
              │
              │ HTTP
              ▼
-       Spring Boot 3.x
+       Spring Boot 3.x (Java 21)
              │
              ├── Domain Services
              └── JPA / Hibernate
@@ -379,6 +412,12 @@ Electron
 - `CalendarEventService`: CalendarEvent CRUD 및 조회
 - `CalendarReminderService`: reminderAt 기반 알림 대상 계산
 
+### MVP 로컬 실행과 향후 서버 확장
+
+MVP는 Electron 기반 로컬 데스크탑 앱과 SQLite를 기준으로 동작합니다. 인증, 서버 DB, 데이터 동기화 및 충돌 해결은 MVP에 포함하지 않습니다.
+
+향후 Desktop, Mobile, Web Client가 Backend Server를 통해 동일한 User 데이터를 사용할 수 있도록 확장할 가능성은 열어 둡니다. 이때에도 기존 `User → 사용자 소유 데이터` 관계를 최대한 유지하며, 서버 계정, 인증, 동기화, 충돌 해결 및 서버 DB는 별도의 설계 결정으로 다룹니다.
+
 ## 16. SQLite 및 트랜잭션 원칙
 
 SQLite는 다음 설정을 사용합니다.
@@ -390,6 +429,14 @@ SQLite는 다음 설정을 사용합니다.
 Execution 생성, Complete, Level 갱신, Achievement 해금 등 핵심 DB 쓰기는 짧은 Transaction으로 처리합니다.
 
 특히 Complete 흐름은 가능한 한 하나의 원자적인 Transaction으로 처리하여 일부만 반영되는 상태를 방지합니다.
+
+### Schema Management
+
+MVP는 SQLite와 JPA/Hibernate를 사용합니다. 초기 개발 단계에서는 JPA/Hibernate Schema Generation을 사용하며 `ddl-auto=update`를 적용합니다.
+
+스키마가 안정화된 뒤에는 `ddl-auto=validate` 전환을 검토합니다. `ddl-auto=update`는 초기 개발 편의를 위한 방식일 뿐 장기적인 migration 전략이 아닙니다.
+
+MVP 초기에는 Flyway 또는 Liquibase를 도입하지 않습니다. 향후 서버 DB를 사용하거나 명시적인 Schema Migration이 필요해지면 Flyway/Liquibase 도입을 별도의 설계 결정으로 검토합니다.
 
 ## 17. Complete 멱등성
 

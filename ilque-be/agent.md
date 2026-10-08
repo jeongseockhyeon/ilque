@@ -5,12 +5,12 @@
 본 문서는 **일퀘 (ilque)** 프로젝트의 백엔드 모듈인 `ilque-be/` 디렉터리 작업 시 AI 에이전트가 준수해야 할 백엔드 아키텍처, 코딩 컨벤션 및 비즈니스 로직 구현 규칙을 정의합니다.
 
 > **우선순위**
-> 1. 프로젝트 루트 `agent.md`
-> 2. 프로젝트 기획/개발/설계 사양서
+> 1. `docs/project-spec.md` (설계 Source of Truth)
+> 2. 프로젝트 루트 `agent.md`
 > 3. 본 문서
 > 4. 기존 코드의 관례
 >
-> 상위 문서와 본 문서가 충돌하면 임의로 한쪽을 선택하지 말고 충돌 내용을 먼저 명시합니다.
+> 상위 문서와 본 문서가 충돌하면 `docs/project-spec.md`를 설계 기준으로 하며, 구현 범위에 추가 판단이 필요하면 충돌 내용을 먼저 사용자에게 명시합니다.
 
 ---
 
@@ -30,7 +30,9 @@
 - SQLite는 WAL 모드, `synchronous=NORMAL`, `busy_timeout=5000` 설정을 우선 고려합니다.
 - 동시성 문제를 애플리케이션 코드만으로 가정하지 말고 DB 트랜잭션 경계를 함께 검토합니다.
 - MySQL 등 다른 DB를 추가 지원하는 것은 명시적인 요구사항이 없는 한 임의로 구현하지 않습니다.
-- Flyway/Liquibase 사용 여부가 확정되지 않은 상태에서는 마이그레이션 도구를 임의로 도입하지 않습니다.
+- MVP 초기 개발에서는 JPA/Hibernate schema generation과 `ddl-auto=update`를 사용할 수 있습니다.
+- `ddl-auto=update`는 장기 운영 환경의 마이그레이션 전략이 아닙니다. 스키마 안정화 후에는 `ddl-auto=validate` 등의 전환을 검토합니다.
+- MVP에는 Flyway/Liquibase를 도입하지 않습니다. 별도의 스키마 마이그레이션이 필요해질 때에만 별도 설계 결정으로 검토합니다.
 
 ---
 
@@ -76,6 +78,25 @@ ilque-be/
 - `CalendarEvent`는 일정/이벤트를 관리하기 위한 보조 도메인입니다.
 - `Achievement`와 `UserAchievement`는 업적 정의와 사용자 획득 이력을 분리합니다.
 
+### 3.2 User / Identity
+
+MVP는 개인용 로컬 데스크톱 애플리케이션이며, `User`는 인증 주체가 아니라 데이터 소유권의 기준입니다.
+
+```text
+User
+├── Quest
+│   └── QuestExecution
+│       └── FocusSession
+├── QuickTodo
+├── CalendarEvent
+└── UserAchievement
+```
+
+- 앱 최초 실행 시 기본 Local User가 없으면 하나 생성하고, 이후 이를 현재 사용자로 사용합니다.
+- 현재 MVP에서는 실제 로그인 사용자나 Spring Security `Authentication`으로 User를 결정하지 않습니다.
+- 회원가입, 로그인, 비밀번호, JWT, OAuth, Spring Security 기반 사용자 인증/인가, 다중 사용자 계정은 구현하지 않습니다.
+- `User`와 소유 관계는 향후 서버/다중 사용자 구조로 확장할 때의 기준으로 유지하지만, 그 확장 기능 자체는 MVP 범위가 아닙니다.
+
 ---
 
 ## 4. 도메인 모델 및 불변 규칙 (Domain Rules)
@@ -94,6 +115,15 @@ Quest는 다음과 같은 개념을 명확히 구분합니다.
   - `CUSTOM`
 
 `DAILY`, `WEEKLY`, `CUSTOM`을 Quest의 종류(`questType`)로 취급하지 않습니다.
+
+`recurrenceType`은 Quest가 **언제 수행 대상인지**만 결정합니다.
+
+- `ONCE`: 한 번만 수행
+- `DAILY`: 매일 수행
+- `WEEKLY`: 매주 수행
+- `CUSTOM`: 사용자가 선택한 요일에 수행
+
+MVP의 `CUSTOM`은 선택 요일 반복으로 한정합니다. N일 간격, 2주 간격, 월간 반복, 특정 날짜 반복, 월말/마지막 요일, 복잡한 RRULE 형태는 구현하지 않습니다.
 
 Quest는 대략 다음 정보를 가집니다.
 
@@ -147,6 +177,13 @@ Reset은 기존 Execution의 상태를 단순히 초기화하는 작업이 아�
 
 새로운 기간이 시작되면 해당 Quest에 대한 새로운 `QuestExecution`을 생성하고, 이전 Execution은 그대로 이력으로 보존합니다.
 
+`RecurrenceType`과 `ResetPolicy`의 책임을 서로 대체하지 않습니다.
+
+- `RecurrenceType`은 Quest가 수행 대상인 시점(및 `CUSTOM`의 선택 요일)을 결정합니다.
+- `ResetPolicy`는 해당 QuestExecution의 기간 경계(`periodStart`, `periodEnd`)를 결정합니다.
+
+예를 들어 `recurrenceType = DAILY`, `resetTime = 05:00`이면 매일 05:00을 기준으로 새로운 Execution 기간을 생성합니다. ResetPolicy를 변경해도 이미 생성된 과거 QuestExecution의 기간 경계와 기록은 변경하지 않습니다.
+
 ResetPolicy는 다음과 같은 정책을 표현할 수 있습니다.
 
 - resetType
@@ -157,7 +194,7 @@ ResetPolicy는 다음과 같은 정책을 표현할 수 있습니다.
 
 시간 계산 시 시스템 자정(00:00)을 임의로 기준으로 사용하지 말고 Quest에 연결된 ResetPolicy와 timezone을 기준으로 판단합니다.
 
-장기간 앱이 꺼져 있었던 경우 Lookback은 최대 **7개 기간**까지만 개별 QuestExecution을 생성합니다. 7개 기간보다 오래된 미수행분은 개별 Execution을 대량 생성하지 않고 `UserStatisticsSummary.longTermMissedCount` 등의 장기 집계로 처리합니다.
+장기간 앱이 꺼져 있었던 경우 Lookback은 최대 **7개 기간**까지만 개별 QuestExecution을 생성합니다. QuestExecution 조회와 Streak 관련 계산도 기본적으로 최대 7개 기간만 직접 조회합니다. 7개 기간보다 오래된 미수행분은 개별 Execution을 대량 생성하거나 무제한 조회하지 않고 `UserStatisticsSummary.longTermMissedCount` 등의 장기 집계로 처리합니다.
 
 `ResetCalculator` 등의 유틸리티를 사용할 수 있지만, 도메인 규칙 자체를 유틸리티에 숨겨서는 안 됩니다.
 
@@ -179,6 +216,7 @@ Quick Todo는 Quest와 완전히 별개의 간단한 일회성 할 일입니다.
 - Level에 영향을 주지 않습니다.
 - Streak에 영향을 주지 않습니다.
 - QuestExecution을 생성하지 않습니다.
+- FocusSession을 생성하거나 사용하지 않습니다.
 - 완료 이력은 기본적으로 최근 **30일** 범위에서 관리하는 단순 기능으로 취급합니다.
 
 따라서 Quick Todo 완료 로직에 Quest 완료 로직이나 `ExpLevelService`를 억지로 재사용하지 않습니다.
@@ -218,6 +256,8 @@ CalendarEvent는 기본적으로 다음 기능을 수행하지 않습니다.
 - EXP 지급
 - Level 변경
 - Streak 변경
+
+MVP에서는 CalendarEvent의 CRUD, 기간별 조회, Upcoming 조회, `reminderAt` 기반 알림 대상 판단 및 Dashboard Upcoming Events 제공을 구현 대상으로 합니다. 외부 캘린더 연동과 협업/회의 중심 기능은 구현하지 않습니다.
 
 `CalendarReminderService`는 `reminderAt`을 기준으로 알림 대상 여부를 계산하고, 실제 데스크톱 알림 표시는 Electron Main Process가 담당합니다.
 
@@ -385,7 +425,7 @@ Controller는 다음만 담당합니다.
 
 - HTTP 요청/응답 처리
 - Request DTO 검증
-- 인증 사용자 식별 정보 전달
+- 현재 Local User 식별 정보 전달 (인증/인가 정보가 아님)
 - Service 호출
 - 표준 응답 반환
 
@@ -405,6 +445,21 @@ Service는 다음을 담당합니다.
 - Today / History / Statistics 조회 및 장기 미접속 요약
 - CalendarEvent 및 reminderAt 처리
 - 도메인 간 협력
+
+서비스 책임은 다음과 같이 분리합니다.
+
+```text
+QuestService             Quest / Category / ResetPolicy 관리
+ExecutionService         Execution 생성, Reset, Lookback, 상태 전이
+FocusService             FocusSession 시작/종료 및 시간 집계
+ExpLevelService          EXP 계산 및 Level 갱신
+StreakService            Current / Longest Streak 계산
+AchievementService       Achievement 조건 검사 및 보상
+StatisticsService        Today / Week / Month 통계 및 History
+QuickTodoService         Quick Todo 및 최근 30일 이력
+CalendarEventService     CalendarEvent CRUD 및 조회
+CalendarReminderService  reminderAt 기반 알림 대상 계산
+```
 
 ### 7.3 Repository
 
@@ -436,14 +491,14 @@ public record ApiResponseEnvelope<T>(
     boolean success,
     T data,
     ErrorDetail error,
-    LocalDateTime timestamp
+    Instant timestamp
 ) {
     public static <T> ApiResponseEnvelope<T> success(T data) {
         return new ApiResponseEnvelope<>(
             true,
             data,
             null,
-            LocalDateTime.now()
+            Instant.now()
         );
     }
 
@@ -455,7 +510,7 @@ public record ApiResponseEnvelope<T>(
             false,
             null,
             new ErrorDetail(code, message),
-            LocalDateTime.now()
+            Instant.now()
         );
     }
 }
@@ -465,7 +520,7 @@ public record ApiResponseEnvelope<T>(
 
 ### 7.6 API URL 규칙
 
-현재 통합 기획서의 API Prefix는 **`/api`**입니다. `/api/v1`을 임의로 도입하거나 두 Prefix를 혼용하지 않습니다.
+현재 통합 기획서의 API Prefix는 **`/api`**입니다. MVP에서는 버전형 API Prefix를 임의로 도입하거나 Prefix를 혼용하지 않습니다.
 
 기획서에 정의된 주요 엔드포인트는 다음을 기준으로 합니다.
 
@@ -508,6 +563,20 @@ Quick Todo API는 실제 구현 계약이 정해지는 시점에 동일한 `/api
 
 기획서에 없는 endpoint를 편의상 추가하지 않으며, API 변경 시 FE/BE 계약을 함께 확인합니다.
 
+### 7.7 Backend authoritative source
+
+다음 값과 결과는 프론트엔드가 최종 계산하거나 결정하지 않으며, 백엔드 Service가 authoritative source입니다.
+
+- QuestExecution 상태
+- `earnedExp`
+- Level
+- Streak
+- Achievement 달성 여부
+- Complete 처리 결과
+- Reset 결과
+
+프론트엔드는 API가 반환한 결과를 표시하는 역할을 중심으로 합니다.
+
 ## 8. 시간 / 날짜 처리 규칙
 
 - ResetPolicy의 timezone을 기준으로 기간을 계산합니다.
@@ -528,7 +597,7 @@ Quick Todo API는 실제 구현 계약이 정해지는 시점에 동일한 `/api
 3. Reset은 기존 Execution 초기화가 아니라 새로운 Execution 생성입니다.
 4. 이전 Execution 이력은 삭제하지 않습니다.
 5. `earnedExp`는 완료 당시 계산된 스냅샷입니다.
-6. Quick Todo는 EXP/Streak/QuestExecution을 사용하지 않습니다.
+6. Quick Todo는 EXP/Level/Streak/QuestExecution/FocusSession을 사용하지 않습니다.
 7. CalendarEvent는 기본적으로 EXP/Streak/QuestExecution을 사용하지 않습니다.
 8. Complete는 멱등적으로 처리되어야 합니다.
 9. Complete에서 보상 관련 변경은 가능한 원자적으로 처리합니다.
@@ -597,7 +666,7 @@ Windows 환경에서는 다음 명령도 사용할 수 있습니다.
 
 ### 12.1 작업 전
 
-1. 루트 `agent.md`와 본 문서를 먼저 확인합니다.
+1. `docs/project-spec.md`, 루트 `agent.md`, 본 문서를 먼저 확인합니다.
 2. 관련 도메인의 기존 코드와 API를 확인합니다.
 3. 기존 Entity/DTO/Repository/Service/Controller 구조를 확인합니다.
 4. 기존 계약과 새 요구사항의 충돌 여부를 확인합니다.
