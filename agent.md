@@ -7,6 +7,10 @@
     개인용 데스크톱 생산성 & 일일 숙제 통합 관리 시스템
 -   **기술 스택**: React + TypeScript + Tailwind CSS + Electron / Java
     21 + Spring Boot 3.x / SQLite
+-   **MVP 실행 구조**: `Electron Desktop → React Renderer → HTTP → Spring
+    Boot 3.x (Java 21) → JPA/Hibernate → SQLite`
+-   **MVP 운영 범위**: 로컬 단일 사용자 데스크톱 환경을 기준으로 합니다.
+    서버 배포, 모바일 앱, 다중 디바이스 동기화는 MVP 범위가 아닙니다.
 -   **핵심 가치**:
     -   EXP, Level, Streak 기반 동기부여
     -   게임별/그룹별 유연한 Reset Time
@@ -29,16 +33,34 @@ ilque/
 
 -   `ilque-fe/` 작업은 `ilque-fe/agent.md`를 우선 준수합니다.
 -   `ilque-be/` 작업은 `ilque-be/agent.md`를 우선 준수합니다.
--   전체 시스템 구조, 도메인 용어, 비즈니스 규칙, API 계약은 본 문서를
-    기준으로 합니다.
--   하위 Agent가 Root의 비즈니스 규칙과 충돌하는 구현을 제안하면 임의로
-    구현하지 않고 사용자에게 알립니다.
--   Root Agent는 **무엇을 만족해야 하는지**, FE/BE Agent는 **어떻게
-    구현하는지**를 주로 정의합니다.
+-   전체 시스템 구조, 도메인 용어, 비즈니스 규칙, API 계약의 Source of
+    Truth는 `docs/project-spec.md`입니다. 본 문서는 그 설계 결정을 AI 작업
+    규칙에 반영합니다.
+-   하위 Agent가 `project-spec.md` 또는 Root의 공통 규칙과 충돌하는 구현을
+    제안하면 임의로 구현하지 않고 사용자에게 알립니다.
+-   Root Agent는 프로젝트 전반에 공통으로 적용할 구현 규칙을, FE/BE
+    Agent는 각 영역의 구체적인 구현 방식을 주로 정의합니다.
 
 ------------------------------------------------------------------------
 
 ## 3. 핵심 도메인 및 비즈니스 규칙
+
+### User / Identity
+
+ilque MVP는 개인용 데스크톱 애플리케이션이며 회원가입 또는 로그인
+시스템을 구현하지 않습니다. `User` 도메인은 데이터 소유권의 기준으로
+유지합니다.
+
+-   앱 최초 실행 시 Local User가 없으면 기본 Local User를 생성하고, 이후
+    해당 Local User를 현재 사용자로 사용합니다.
+-   `Quest`, `QuickTodo`, `CalendarEvent`, `UserAchievement`는 모두 User가
+    소유하며, `QuestExecution`과 `FocusSession`은 Quest 계층을 통해 User의
+    수행 기록에 속합니다.
+-   MVP에서는 회원가입, 로그인, 비밀번호, OAuth, JWT, 다중 사용자 계정,
+    서버 계정 및 사용자 인증/인가는 구현하지 않습니다.
+-   User 소유 관계는 향후 서버 기반 계정, 서버 DB, 모바일/데스크톱
+    동기화로 확장할 때에도 재사용할 수 있도록 유지합니다. 이러한 확장
+    기능 자체는 현재 MVP 범위가 아닙니다.
 
 ### 3.1 Quest
 
@@ -48,7 +70,13 @@ Quest는 사용자가 수행해야 할 **퀘스트 정의(Definition)**입니다
 `questType`과 `recurrenceType`은 서로 다른 개념입니다.
 
 -   `questType`: `CHECK`, `TIME_BASED`
--   `recurrenceType`: `ONCE`, `DAILY`, `WEEKLY`, `CUSTOM`
+-   `recurrenceType`: `ONCE`(1회성), `DAILY`(매일), `WEEKLY`(매주),
+    `CUSTOM`(사용자가 지정한 요일)
+
+`RecurrenceType`은 Quest가 **언제 수행 대상이 되는지**를 결정합니다.
+MVP의 `CUSTOM`은 월/수/금처럼 사용자가 선택한 요일에 반복하는 경우로
+한정합니다. N일마다, 2주마다, 월간 반복, 특정 월의 마지막 날 및 그 밖의
+복잡한 캘린더 기반 반복 규칙은 MVP에서 구현하지 않습니다.
 
 주요 필드: - `categoryId`, `resetPolicyId` - `difficulty`: `EASY`,
 `NORMAL`, `HARD`, `EPIC` - `targetCount`, `targetTimeMinutes` -
@@ -105,7 +133,10 @@ Quick Todo는 Quest와 별도이며 다음에 영향을 주지 않습니다.
 
 ### 3.5 ResetPolicy
 
-Quest의 수행 기간을 결정하는 리셋 정책입니다.
+`ResetPolicy`는 QuestExecution의 **기간 경계가 언제 시작되고 종료되는지**를
+결정하는 리셋 정책입니다. `RecurrenceType`이 수행 대상 시점을 정하고,
+`ResetPolicy`가 기간 경계를 정하므로 두 책임을 혼동하거나 서로 대체하지
+않습니다.
 
 **Reset은 기존 상태를 초기화하는 동작이 아니라 새로운 기간의
 QuestExecution을 생성하는 기준입니다.**
@@ -117,6 +148,10 @@ QuestExecution을 생성하는 기준입니다.**
 
 리셋 시각은 UTC 절대 시각이 아니라 해당 ResetPolicy의 설정을 기준으로
 계산합니다.
+
+예를 들어 `RecurrenceType = DAILY`, `ResetPolicy = 매일 05:00`이면 매일
+05:00을 기준으로 새 Execution 기간이 생성됩니다. ResetPolicy를 변경해도
+이미 생성된 과거 QuestExecution의 기간 경계나 기록은 변경하지 않습니다.
 
 ### 3.6 Streak / Rest Day
 
@@ -335,10 +370,8 @@ CalendarEvent → Streak 변경
 
 ### 9.1 API Prefix
 
-기획서의 API 예시는 `/api/...`이고 기존 Agent 초안은 `/api/v1/...`이므로
-**개발 시작 전에 하나의 Prefix를 확정해야 합니다.**
-
-확정 전까지 AI Agent는 `/api`와 `/api/v1`을 혼용하지 않습니다.
+현재 REST API Prefix는 **`/api`**입니다. `/api/v1`은 사용하지 않으며,
+MVP 범위에서는 API 버전 관리 방식을 도입하지 않습니다.
 
 ### 9.2 REST 규칙
 
@@ -377,8 +410,9 @@ CalendarEvent → Streak 변경
 
 -   FE/BE가 공유하는 API 계약을 임의로 변경하지 않습니다.
 -   DTO/응답 변경 시 영향받는 FE/BE 파일과 변경 이유를 먼저 확인합니다.
--   기획서와 Agent 규칙이 충돌하면 사용자에게 알리고 임의로 결정하지
-    않습니다.
+-   `project-spec.md`와 Agent 규칙이 충돌하면 `project-spec.md`를 설계의
+    Source of Truth로 따르며, Agent 규칙 정합화 또는 구현 범위에 판단이
+    필요하면 사용자에게 알리고 임의로 결정하지 않습니다.
 
 ------------------------------------------------------------------------
 
@@ -391,6 +425,17 @@ SQLite 설정 방향: - WAL - `synchronous=NORMAL` - `busy_timeout=5000ms`
 QuestExecution 이력을 임의로 수정/삭제하지 않습니다.
 
 구체적인 JPA/Repository 구현은 `ilque-be/agent.md`에서 정의합니다.
+
+### 10.1 Schema 관리
+
+MVP는 SQLite와 JPA/Hibernate로 스키마를 관리합니다. 초기 개발 단계에서는
+`ddl-auto=update`를 허용합니다.
+
+-   `ddl-auto=update`는 초기 개발 편의를 위한 설정이며, 장기 운영 환경의
+    마이그레이션 전략으로 간주하지 않습니다.
+-   MVP 초기에는 Flyway 또는 Liquibase를 도입하지 않습니다.
+-   스키마가 안정화된 뒤에는 `ddl-auto=validate` 등의 방식으로 전환하는
+    것을 검토할 수 있습니다.
 
 ------------------------------------------------------------------------
 
@@ -519,5 +564,7 @@ MVP를 우선 구현합니다. 고급 Achievement, 고급 통계 차트, 게임�
 >
 > **Quick Todo와 CalendarEvent는 Quest 성장 루프와 분리한다.**
 
-Root Agent와 기획서가 충돌할 경우 AI Agent가 임의로 판단하여 코드를
-수정하지 않고, 충돌 내용을 사용자에게 명확히 알린 후 결정을 기다립니다.
+Root Agent와 `project-spec.md`가 충돌하면 `project-spec.md`를 설계의 Source
+of Truth로 따릅니다. 구현 범위에 추가 판단이 필요한 경우에는 AI Agent가
+임의로 코드를 수정하지 않고 충돌 내용을 사용자에게 명확히 알린 후 결정을
+기다립니다.
