@@ -122,9 +122,10 @@ CalendarEvent 자체는 EXP, Level, Streak에 영향을 주지 않으며 QuestEx
 ### Backend
 
 - Java 21
-- Spring Boot 3.x
+- Spring Boot 4.1.1
 - Spring Data JPA / Hibernate
-- Gradle
+- Gradle (Groovy DSL)
+- Spring Boot 기반 REST API (`/api`)
 
 ### Database
 
@@ -187,5 +188,4 @@ Category ──< CalendarEvent (선택)
 | [`ilque-fe/agent.md`](./ilque-fe/agent.md) | Frontend AI 개발 규칙 |
 | [`ilque-be/agent.md`](./ilque-be/agent.md) | Backend AI 개발 규칙 |
 | [`docs/project-spec.md`](./docs/project-spec.md) | 프로젝트 기획 및 개발 기준 |
-
 

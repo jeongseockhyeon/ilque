@@ -14,16 +14,40 @@
 
 ---
 
+## 언어 및 응답 규칙
+
+* 사용자와의 모든 대화 및 응답은 한국어로 작성한다.
+* 작업 계획, 진행 상황, 작업 결과, 오류 설명, 추가 확인 요청도 한국어로 작성한다.
+* 코드 수정 및 구현 결과를 설명할 때도 한국어를 사용한다.
+* 문서, README, 주석, 커밋 메시지 등 프로젝트 산출물은 별도의 명시적 요구가 없는 한 한국어로 작성한다.
+* 기술 용어, 라이브러리명, API 경로, 클래스명, 메서드명, 변수명 등은 정확성을 위해 원문을 유지할 수 있다.
+* 코드 식별자와 프레임워크의 필수 규칙은 임의로 번역하거나 변경하지 않는다.
+* 영어로 된 오류 메시지나 로그를 인용할 경우 원문을 유지하되, 설명은 한국어로 작성한다.
+* 사용자가 다른 언어로 답변하거나 산출물을 작성하도록 명시적으로 요청한 경우에만 해당 요청을 따른다.
+* 이 규칙은 모든 작업 세션과 작업 유형에 공통으로 적용한다.
+
+
 ## 2. 기술 스택 (Tech Stack)
 
 - **Language & JDK**: Java 21
-- **Framework**: Spring Boot 3.x
+- **Framework**: Spring Boot 4.1.1
 - **Persistence & ORM**: Spring Data JPA, Hibernate
 - **Database**: SQLite
-- **Build Tool**: Gradle
+- **Build Tool**: Gradle (Groovy DSL)
+- **API**: Spring Boot 기반 REST API (Prefix: `/api`)
 - **Utilities**: Lombok, MapStruct (필요한 경우에만)
 
-### 2.1 데이터베이스 원칙
+### 2.1 Spring Boot 4.1.1 의존성 및 SQLite 호환성
+
+- Spring Boot Gradle plugin은 `4.1.1`을 사용하고, Spring Boot BOM으로 관리되는 의존성에는 개별 버전을 지정하지 않습니다.
+- JPA는 `org.springframework.boot:spring-boot-starter-data-jpa`를 사용합니다. 이 Starter가 Spring Data JPA와 Hibernate를 구성하므로 Hibernate core를 별도로 고정하지 않습니다.
+- Servlet 기반 REST API는 Spring Boot 4.1.1에서 유효한 `org.springframework.boot:spring-boot-starter-webmvc`를 사용합니다. 요청 검증이 필요하면 `org.springframework.boot:spring-boot-starter-validation`을 추가합니다.
+- SQLite JDBC는 runtime 의존성 `org.xerial:sqlite-jdbc`를 사용합니다. Spring Boot 4.1.1 BOM이 관리하는 버전을 사용합니다.
+- SQLite dialect는 Hibernate core에 포함되지 않은 community dialect입니다. 따라서 `org.hibernate.orm:hibernate-community-dialects`를 추가하고, `spring.jpa.database-platform=org.hibernate.community.dialect.SQLiteDialect`를 사용합니다. 이 artifact 역시 Spring Boot 4.1.1 BOM 관리 버전을 따릅니다.
+- SQLite는 Spring Boot의 내장 데이터베이스 자동 감지 대상이 아니므로 `spring.datasource.url=jdbc:sqlite:...`를 명시합니다. 필요하면 드라이버 클래스는 `org.sqlite.JDBC`로 지정합니다.
+- Spring Boot 4.1.1의 Hibernate 설정은 `spring.jpa.hibernate.ddl-auto`를 사용합니다. MVP 초기에는 `update`를 허용하고, 안정화 후 `validate` 전환을 검토합니다.
+
+### 2.2 데이터베이스 원칙
 
 - 기본 대상 데이터베이스는 **SQLite**입니다.
 - SQLite의 데스크톱 로컬 환경 특성을 고려하여 짧은 트랜잭션을 유지합니다.

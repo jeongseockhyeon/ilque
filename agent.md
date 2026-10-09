@@ -1,14 +1,28 @@
 # 프로젝트 규칙 및 AI 에이전트 지침 (Root Agent Rules)
 
+## 언어 및 응답 규칙
+
+* 사용자와의 모든 대화 및 응답은 한국어로 작성한다.
+* 작업 계획, 진행 상황, 작업 결과, 오류 설명, 추가 확인 요청도 한국어로 작성한다.
+* 코드 수정 및 구현 결과를 설명할 때도 한국어를 사용한다.
+* 문서, README, 주석, 커밋 메시지 등 프로젝트 산출물은 별도의 명시적 요구가 없는 한 한국어로 작성한다.
+* 기술 용어, 라이브러리명, API 경로, 클래스명, 메서드명, 변수명 등은 정확성을 위해 원문을 유지할 수 있다.
+* 코드 식별자와 프레임워크의 필수 규칙은 임의로 번역하거나 변경하지 않는다.
+* 영어로 된 오류 메시지나 로그를 인용할 경우 원문을 유지하되, 설명은 한국어로 작성한다.
+* 사용자가 다른 언어로 답변하거나 산출물을 작성하도록 명시적으로 요청한 경우에만 해당 요청을 따른다.
+* 이 규칙은 모든 작업 세션과 작업 유형에 공통으로 적용한다.
+
+
 ## 1. 프로젝트 개요 (Project Overview)
 
 -   **프로젝트명**: 일퀘 (ilque)
 -   **개요**: 게이머와 개발자를 위한 게이미피케이션(Gamification) 기반
     개인용 데스크톱 생산성 & 일일 숙제 통합 관리 시스템
 -   **기술 스택**: React + TypeScript + Tailwind CSS + Electron / Java
-    21 + Spring Boot 3.x / SQLite
+    21 + Spring Boot 4.1.1 + Gradle (Groovy DSL) / Spring Data JPA + Hibernate /
+    SQLite
 -   **MVP 실행 구조**: `Electron Desktop → React Renderer → HTTP → Spring
-    Boot 3.x (Java 21) → JPA/Hibernate → SQLite`
+    Boot 4.1.1 (Java 21) → JPA/Hibernate → SQLite`
 -   **MVP 운영 범위**: 로컬 단일 사용자 데스크톱 환경을 기준으로 합니다.
     서버 배포, 모바일 앱, 다중 디바이스 동기화는 MVP 범위가 아닙니다.
 -   **핵심 가치**:

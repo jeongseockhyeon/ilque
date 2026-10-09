@@ -377,6 +377,15 @@ QuestExecution의 실제 수행 시간, 완료 시각, 확정 earnedExp 및 일/
 
 ## 15. 시스템 아키텍처
 
+### Backend 기술 기준
+
+- Java 21
+- Spring Boot 4.1.1
+- Gradle (Groovy DSL)
+- Spring Boot 기반 REST API (API Prefix: `/api`)
+- Spring Data JPA / Hibernate
+- SQLite
+
 ```text
 Electron
 ├── Main Process
@@ -390,7 +399,7 @@ Electron
              │
              │ HTTP
              ▼
-       Spring Boot 3.x (Java 21)
+       Spring Boot 4.1.1 (Java 21)
              │
              ├── Domain Services
              └── JPA / Hibernate
