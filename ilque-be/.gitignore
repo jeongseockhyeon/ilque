@@ -44,3 +44,7 @@ out/
 *.db-shm
 *.sqlite
 *.sqlite3
+
+###yml
+*.yml
+
