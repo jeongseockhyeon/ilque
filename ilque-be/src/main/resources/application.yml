@@ -3,7 +3,7 @@ spring:
     name: ilque-be
 
   datasource:
-    url: jdbc:sqlite:./data/ilque.db
+    url: jdbc:sqlite:./data/ilque.db?journal_mode=WAL&synchronous=NORMAL&busy_timeout=5000
     driver-class-name: org.sqlite.JDBC
 
   jpa:
