@@ -268,21 +268,42 @@ Focus Timer UI가 실제 수행 시간을 표시하더라도 최종 완료/보�
 
 ### 7.2 Response Envelope
 
-Root Agent의 공통 Response Envelope를 사용합니다.
+Root Agent의 공통 Response Envelope를 사용합니다. 일반 API의 성공/오류 응답은 모두 동일한 Envelope이며, 필드는 `success`, `data`, `error`, `timestamp`로 구성됩니다.
 
 ```typescript
+export interface FieldViolation {
+  field: string;
+  message: string;
+}
+
+export interface ApiError {
+  code: string;
+  message: string;
+  details: FieldViolation[] | null;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T | null;
-  error: {
-    code: string;
-    message: string;
-  } | null;
+  error: ApiError | null;
   timestamp: string;
 }
 ```
 
-성공 응답에서 `data`가 항상 존재한다고 가정하지 않습니다.
+`ApiError`는 백엔드의 `ErrorDetail`에 대응하는 프론트엔드 측 타입 이름이다. 이름은 다르지만 필드 구조(`code`, `message`, `details`)와 JSON 응답 계약은 동일하므로 별도의 변환 없이 사용한다.
+
+공통 API Client 처리 규칙:
+
+- 성공 응답은 `success === true`이며 `error`는 `null`입니다. 성공 응답에서도 데이터가 없을 수 있으므로 `data`가 항상 존재한다고 가정하지 않고 `data === null`인 경우를 처리합니다.
+- 오류 응답은 `success === false`, `data === null`이며 `error` 객체를 기준으로 처리합니다. `error.code`로 분기하고 `error.message`를 사용자에게 표시할 기본 메시지로 사용합니다.
+- `error.details`는 선택적 필드입니다. `code === "VALIDATION_ERROR"`인 경우 `details` 배열의 `field`/`message`를 폼의 필드별 오류 표시에 사용합니다. 그 외 일반 오류에서는 `details`가 `null`이므로 필드별 오류 UI를 표시하지 않습니다.
+- 성공·오류 여부와 별개로 HTTP 상태 코드는 의미에 맞게 사용됩니다. 공통 API Client는 Envelope의 `success`/`error`를 기준으로 처리하되, 필요 시 HTTP 상태(예: 404, 409)에 따른 분기를 함께 고려합니다.
+- Envelope를 반환하는 빈 작업 응답은 기본적으로 `200 OK`로 오므로 별도의 `204 No Content` 빈 본문 처리를 기본 동작으로 가정하지 않습니다.
+- 예상하지 못한 서버 오류는 일반 메시지로 전달되므로, Stack Trace나 내부 경로 같은 상세 정보가 응답에 포함된다고 가정하지 않습니다.
+- 인증·인가는 MVP 범위가 아니므로 공통 API Client에 인증 토큰/인가 처리 로직을 새로 추가하지 않습니다.
+- 페이지네이션은 실제 API 요구사항이 정해지기 전까지 공통 응답 구조에 포함되지 않으므로, 목록 응답에 페이지 정보가 있다고 임의로 가정하지 않습니다.
+
+`timestamp`는 ISO 8601 형식의 UTC 시각 문자열입니다 (예: `2026-10-06T14:00:00Z`). 숫자형 Unix timestamp로 반환되지 않으므로 문자열 파싱을 기준으로 처리합니다. 클라이언트 표시용 시각 변환이 필요하면 이 값을 기준으로 변환합니다.
 
 ### 7.3 API Service
 
