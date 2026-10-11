@@ -506,9 +506,13 @@ Controller API의 Request/Response에 Entity를 직접 노출하지 않습니다
 
 ### 7.5 API 응답 규격
 
-루트 `agent.md`에서 공통 응답 Envelope를 확정한 경우 이를 따릅니다.
+루트 `agent.md`의 공통 Response Envelope를 따른다. 일반 API의 성공/오류 응답은 모두 동일한 Envelope를 사용하며, 필드는 `success`, `data`, `error`, `timestamp`로 구성한다.
 
-현재 공통 형태는 다음을 기준으로 합니다.
+- 성공 시 `success=true`, `error=null`이다. 데이터가 없는 성공 응답은 `data=null`로 표현한다.
+- 오류 시 `success=false`, `data=null`이다.
+- `timestamp`는 ISO 8601 형식의 UTC 시각 문자열이다 (예: `2026-10-06T14:00:00Z`). `Instant` 값을 숫자형 Unix timestamp가 아닌 문자열로 직렬화한다. Spring Boot 기본 Jackson 설정(`WRITE_DATES_AS_TIMESTAMPS` 비활성화)을 유지하고 숫자형 출력으로 변경하지 않는다. `Instant` 자체가 UTC 기준 시점이므로 별도의 시간대 변환 설정을 적용하지 않는다.
+
+오류 객체는 `code`, `message`, `details`로 구성한다. `details`는 선택적 필드이며, 필드별 유효성 검사 오류가 있을 때만 `FieldViolation`(`field`, `message`) 배열을 담는다. 일반 오류의 `details`는 `null`로 설정한다.
 
 ```java
 public record ApiResponseEnvelope<T>(
@@ -533,14 +537,57 @@ public record ApiResponseEnvelope<T>(
         return new ApiResponseEnvelope<>(
             false,
             null,
-            new ErrorDetail(code, message),
+            new ErrorDetail(code, message, null),
+            Instant.now()
+        );
+    }
+
+    public static <T> ApiResponseEnvelope<T> validationError(
+        String message,
+        List<FieldViolation> details
+    ) {
+        return new ApiResponseEnvelope<>(
+            false,
+            null,
+            new ErrorDetail("VALIDATION_ERROR", message, details),
             Instant.now()
         );
     }
 }
+
+public record ErrorDetail(
+    String code,
+    String message,
+    List<FieldViolation> details
+) {
+}
+
+public record FieldViolation(
+    String field,
+    String message
+) {
+}
 ```
 
-단, 이 응답 Envelope 자체가 프로젝트 사양보다 우선하는 것은 아닙니다. 루트 Agent와 실제 API 계약이 변경되면 함께 변경합니다.
+#### HTTP 상태 코드 및 오류 코드 매핑
+
+성공·오류 여부와 별개로 HTTP 상태 코드는 의미에 맞게 사용한다. `GlobalExceptionHandler`에서 예외를 다음 매핑으로 변환하는 것을 기준으로 한다.
+
+| HTTP 상태 | 오류 코드 | 대표 원인 |
+|---|---|---|
+| `400 Bad Request` | `BAD_REQUEST` | 잘못된 요청 값, 잘못된 상태 전이, 완료 조건 미충족 |
+| `400 Bad Request` | `VALIDATION_ERROR` | 요청 DTO 검증 실패 (`details`에 필드별 오류 포함) |
+| `404 Not Found` | `RESOURCE_NOT_FOUND` | 존재하지 않는 리소스 |
+| `409 Conflict` | `RESOURCE_CONFLICT` | 중복 생성, 이미 처리된 요청과의 충돌 |
+| `500 Internal Server Error` | `INTERNAL_SERVER_ERROR` | 예상하지 못한 서버 내부 오류 |
+
+추가 규칙:
+
+- Envelope를 반환하는 빈 작업 응답은 기본적으로 `200 OK`를 사용한다. `204 No Content`는 응답 본문이 없어야 하므로 기본 응답 규약에서는 사용하지 않는다.
+- 필요한 추가 오류 코드(도메인별 특화 코드 등)는 실제 도메인 요구사항이 생길 때 `ErrorCode`에 확장한다. 임의로 새 코드를 발명하지 않는다.
+- 예상하지 못한 서버 오류의 Stack Trace, SQL, 내부 경로는 응답에 포함하지 않고 `INTERNAL_SERVER_ERROR`의 일반 메시지로 변환한다. 상세 내용은 서버 로그에만 남긴다.
+
+단, 이 응답 Envelope 자체가 프로젝트 사양보다 우선하는 것은 아니다. 루트 Agent와 실제 API 계약(`docs/project-spec.md` §18.5)이 변경되면 함께 변경한다.
 
 ### 7.6 API URL 규칙
 
@@ -633,16 +680,17 @@ Quick Todo API는 실제 구현 계약이 정해지는 시점에 동일한 `/api
 ## 10. 예외 처리 (Error Handling)
 
 - 전역 예외 처리는 `GlobalExceptionHandler`에서 일관되게 처리합니다.
-- 도메인 오류는 의미 있는 `ErrorCode`로 정의합니다.
+- 도메인 오류는 의미 있는 `ErrorCode`로 정의합니다. HTTP 상태 코드와 오류 코드의 매핑은 §7.5를 따릅니다.
 - Controller마다 동일한 예외 처리 코드를 반복하지 않습니다.
 - 다음과 같은 오류를 명확히 구분합니다.
-  - 존재하지 않는 리소스
-  - 잘못된 상태 전이
-  - 완료 조건 미충족
-  - 중복/이미 처리된 요청
-  - 잘못된 요청 값
-  - 서버 내부 오류
-- 내부 Stack Trace나 민감한 구현 정보를 API 응답에 노출하지 않습니다.
+  - 존재하지 않는 리소스 → `404 RESOURCE_NOT_FOUND`
+  - 잘못된 상태 전이 → `400 BAD_REQUEST`
+  - 완료 조건 미충족 → `400 BAD_REQUEST`
+  - 중복/이미 처리된 요청 → `409 RESOURCE_CONFLICT`
+  - 잘못된 요청 값 → `400 BAD_REQUEST`
+  - 요청 DTO 검증 실패 → `400 VALIDATION_ERROR` (`details`에 `field`, `message` 목록 포함)
+  - 서버 내부 오류 → `500 INTERNAL_SERVER_ERROR`
+- 내부 Stack Trace나 민감한 구현 정보를 API 응답에 노출하지 않습니다. 예상하지 못한 서버 오류의 Stack Trace, SQL, 내부 경로는 응답에 포함하지 않고 일반 메시지로 변환하며, 상세 내용은 서버 로그에만 남깁니다.
 
 ---
 
