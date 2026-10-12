@@ -512,7 +512,35 @@ GET    /api/calendar/upcoming
 GET    /api/calendar/date/{date}
 ```
 
-구체적인 Request / Response DTO 계약은 실제 API 구현 단계에서 별도의 API 문서로 분리할 수 있습니다.
+### 공통 응답 규약
+
+일반 API의 성공/오류 응답은 공통 Envelope를 사용한다. 필드는 `success`, `data`, `error`, `timestamp`로 구성한다.
+
+- 성공 시 `success=true`, `error=null`이다. 데이터가 없는 성공 응답은 `data=null`로 표현한다.
+- 오류 시 `success=false`, `data=null`이다. 오류 객체는 `code`, `message`, `details`로 구성한다.
+- `details`는 선택적 필드이며, 필드별 유효성 검사 오류가 있을 때만 `field`, `message` 항목 배열을 담는다. 일반 오류의 `details`는 `null`로 설정한다.
+- `timestamp`는 ISO 8601 형식의 UTC 시각 문자열이다 (예: `2026-10-06T14:00:00Z`). 숫자형 Unix timestamp로 반환하지 않는다.
+
+성공·오류 여부와 별개로 HTTP 상태 코드는 의미에 맞게 사용한다. 기본 매핑은 다음과 같다.
+
+| HTTP 상태 | 오류 코드 | 용도 |
+|---|---|---|
+| `400 Bad Request` | `BAD_REQUEST` | 잘못된 요청 값, 잘못된 상태 전이, 완료 조건 미충족 |
+| `400 Bad Request` | `VALIDATION_ERROR` | 요청 값 검증 실패 (`details`에 필드별 오류 포함) |
+| `404 Not Found` | `RESOURCE_NOT_FOUND` | 존재하지 않는 리소스 |
+| `409 Conflict` | `RESOURCE_CONFLICT` | 중복/충돌 |
+| `500 Internal Server Error` | `INTERNAL_SERVER_ERROR` | 예상하지 못한 서버 내부 오류 |
+
+필요한 추가 오류 코드는 실제 도메인 요구사항이 생길 때 확장한다.
+
+추가 규칙:
+
+- Envelope를 반환하는 빈 작업 응답은 기본적으로 `200 OK`를 사용한다. `204 No Content`는 응답 본문이 없어야 하므로 기본 응답 규약에서는 사용하지 않는다.
+- 예상하지 못한 서버 오류의 Stack Trace, SQL, 내부 경로는 클라이언트에 노출하지 않는다.
+- 인증·인가는 MVP 범위가 아니므로 인증 관련 설계를 새로 추가하지 않는다.
+- 페이지네이션은 실제 API 요구사항이 정해지기 전까지 공통 응답 구조에 포함하지 않는다.
+
+구체적인 Request / Response DTO 계약은 실제 API 구현 단계에서 별도의 API 문서로 분리할 수 있다.
 
 ## 19. MVP 범위
 

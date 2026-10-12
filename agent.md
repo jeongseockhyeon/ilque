@@ -395,7 +395,14 @@ MVP 범위에서는 API 버전 관리 방식을 도입하지 않습니다.
 
 ### 9.3 공통 Response Envelope
 
-아래 형식은 구현 단계의 공통 API 규격입니다.
+일반 API의 성공/오류 응답은 다음 공통 Envelope를 사용한다. 필드는 `success`, `data`, `error`, `timestamp`로 구성한다.
+
+-   성공 시 `success=true`, `error=null`이다. 데이터가 없는 성공 응답은 `data=null`로 표현한다.
+-   오류 시 `success=false`, `data=null`이다. 오류 객체는 `code`, `message`, `details`로 구성한다.
+-   `details`는 선택적 필드이며, 필드별 유효성 검사 오류가 있을 때만 항목 배열을 담는다. 항목은 `field`, `message`로 구성한다. 일반 오류의 `details`는 `null`로 설정한다.
+-   `timestamp`는 ISO 8601 형식의 UTC 시각 문자열이다 (예: `2026-10-06T14:00:00Z`). 숫자형 Unix timestamp로 반환하지 않는다.
+
+성공:
 
 ``` json
 {
@@ -406,19 +413,57 @@ MVP 범위에서는 API 버전 관리 방식을 도입하지 않습니다.
 }
 ```
 
-오류:
+데이터가 없는 성공 응답은 `data`를 `null`로 표현한다.
+
+일반 오류:
 
 ``` json
 {
   "success": false,
   "data": null,
   "error": {
-    "code": "QUEST_NOT_FOUND",
-    "message": "해당 퀘스트를 찾을 수 없습니다."
+    "code": "RESOURCE_NOT_FOUND",
+    "message": "해당 리소스를 찾을 수 없습니다.",
+    "details": null
   },
   "timestamp": "2026-10-06T14:00:00Z"
 }
 ```
+
+필드별 유효성 검사 오류:
+
+``` json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "입력 값이 유효하지 않습니다.",
+    "details": [
+      { "field": "title", "message": "제목은 필수입니다." }
+    ]
+  },
+  "timestamp": "2026-10-06T14:00:00Z"
+}
+```
+
+#### HTTP 상태 코드 및 오류 코드
+
+성공·오류 여부와 별개로 HTTP 상태 코드는 의미에 맞게 사용한다. 기본 매핑은 다음과 같다.
+
+-   `400 Bad Request`: `BAD_REQUEST` (잘못된 요청 값, 잘못된 상태 전이, 완료 조건 미충족)
+-   `400 Bad Request`: `VALIDATION_ERROR` (요청 DTO 검증 실패, `details`에 필드별 오류 포함)
+-   `404 Not Found`: `RESOURCE_NOT_FOUND` (존재하지 않는 리소스)
+-   `409 Conflict`: `RESOURCE_CONFLICT` (중복, 이미 처리된 요청과의 충돌 등)
+-   `500 Internal Server Error`: `INTERNAL_SERVER_ERROR` (예상하지 못한 서버 내부 오류)
+
+추가 규칙:
+
+-   Envelope를 반환하는 빈 작업 응답은 기본적으로 `200 OK`를 사용한다. `204 No Content`는 응답 본문이 없어야 하므로 기본 응답 규약에서는 사용하지 않는다.
+-   필요한 추가 오류 코드(도메인별 특화 코드 등)는 실제 도메인 요구사항이 생길 때 확장한다. 기본 규약의 리소스 미존재 코드는 `RESOURCE_NOT_FOUND`를 사용한다. 기존 예시에 있던 `QUEST_NOT_FOUND` 같은 도메인 특화 코드는 확정된 기본 코드가 아니라 향후 도메인 요구사항 발생 시 확장하는 예시로 취급한다.
+-   예상하지 못한 서버 오류의 Stack Trace, SQL, 내부 경로는 클라이언트에 노출하지 않는다.
+-   인증·인가는 MVP 범위가 아니므로 인증 관련 설계를 새로 추가하지 않는다.
+-   페이지네이션은 실제 API 요구사항이 정해지기 전까지 공통 응답 구조에 포함하지 않는다.
 
 ### 9.4 API 변경 원칙
 
