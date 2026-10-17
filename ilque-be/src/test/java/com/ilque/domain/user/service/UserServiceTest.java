@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -95,5 +96,34 @@ class UserServiceTest {
         // then
         assertThat(result).isEqualTo(existing);
         then(userRepository).should(never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("DB 조회 실패 시 예외를 전파한다")
+    void initializeLocalUser_propagatesFindFailure() {
+        // given
+        RuntimeException failure = new RuntimeException("DB 조회 실패");
+        given(userRepository.findFirstByOrderByUserIdAsc())
+                .willThrow(failure);
+
+        // when & then
+        assertThatThrownBy(() -> userService.initializeLocalUser())
+                .isSameAs(failure);
+        then(userRepository).should(never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("DB 생성 실패 시 예외를 전파한다")
+    void initializeLocalUser_propagatesSaveFailure() {
+        // given
+        given(userRepository.findFirstByOrderByUserIdAsc())
+                .willReturn(Optional.empty());
+        RuntimeException failure = new RuntimeException("DB 생성 실패");
+        given(userRepository.save(any(User.class)))
+                .willThrow(failure);
+
+        // when & then
+        assertThatThrownBy(() -> userService.initializeLocalUser())
+                .isSameAs(failure);
     }
 }
