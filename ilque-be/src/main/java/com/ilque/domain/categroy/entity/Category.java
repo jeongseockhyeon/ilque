@@ -1,4 +1,4 @@
-package com.ilque.domain.categroy;
+package com.ilque.domain.categroy.entity;
 
 import com.ilque.global.base.Base;
 import jakarta.persistence.*;
