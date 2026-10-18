@@ -48,3 +48,5 @@ out/
 ###yml
 *.yml
 
+### 테스트 db 설정은
+!**/src/test/resources/application.yml
