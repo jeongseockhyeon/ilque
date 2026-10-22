@@ -12,6 +12,11 @@
 >
 > 상위 문서와 본 문서가 충돌하면 `docs/project-spec.md`를 설계 기준으로 하며, 구현 범위에 추가 판단이 필요하면 충돌 내용을 먼저 사용자에게 명시합니다.
 
+프로젝트 루트 공통 지침 문서의 실제 파일명은 `agent.md`이며, 본 문서는
+백엔드 전용 지침 문서 `ilque-be/agent.md`입니다. 도메인 식별자 필드는
+해당 도메인의 lower camel case 이름에 `Id`를 붙인 `{domain}Id` 형식을
+사용합니다. 예: `userId`, `categoryId`, `resetPolicyId`, `questId`.
+
 ---
 
 ## 언어 및 응답 규칙
@@ -340,7 +345,7 @@ CalendarEvent는 **Quest 수행을 보조하는 일정/이벤트 관리 기능**
 
 주요 정보:
 
-- id
+- calendarEventId
 - userId
 - title
 - description
@@ -687,34 +692,34 @@ public record FieldViolation(
 ```text
 GET    /api/quests
 POST   /api/quests
-GET    /api/quests/{id}
-PATCH  /api/quests/{id}
-DELETE /api/quests/{id}
+GET    /api/quests/{questId}
+PATCH  /api/quests/{questId}
+DELETE /api/quests/{questId}
 
 GET    /api/reset-policies
 POST   /api/reset-policies
-PATCH  /api/reset-policies/{id}
+PATCH  /api/reset-policies/{resetPolicyId}
 
 GET    /api/today
 POST   /api/quests/{questId}/start
-POST   /api/executions/{id}/complete
-POST   /api/executions/{id}/skip
+POST   /api/executions/{questExecutionId}/complete
+POST   /api/executions/{questExecutionId}/skip
 POST   /api/quests/{questId}/focus/start
-POST   /api/focus/{sessionId}/stop
+POST   /api/focus/{focusSessionId}/stop
 
 GET    /api/achievements
 GET    /api/achievements/unlocked
-PATCH  /api/achievements/{id}/equip
+PATCH  /api/achievements/{achievementId}/equip
 
 GET    /api/statistics/today
 GET    /api/statistics/week
 GET    /api/statistics/month
 
 GET    /api/calendar/events
-GET    /api/calendar/events/{id}
+GET    /api/calendar/events/{calendarEventId}
 POST   /api/calendar/events
-PATCH  /api/calendar/events/{id}
-DELETE /api/calendar/events/{id}
+PATCH  /api/calendar/events/{calendarEventId}
+DELETE /api/calendar/events/{calendarEventId}
 GET    /api/calendar/upcoming
 GET    /api/calendar/date/{date}
 ```

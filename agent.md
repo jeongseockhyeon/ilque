@@ -58,6 +58,11 @@ ilque/
 -   문서 간 충돌을 발견하면 임의로 한쪽을 선택해 구현하지 않고, 충돌 항목과
     영향 범위를 보고합니다. 확정 요구사항, 제안 사항, 미결정 사항을
     구분해서 기록합니다.
+-   루트 공통 지침 문서의 실제 파일명은 `agent.md`입니다. 백엔드 전용 지침
+    문서는 `ilque-be/agent.md`이며 두 문서를 혼동하지 않습니다.
+-   도메인 식별자 필드는 해당 도메인의 lower camel case 이름에 `Id`를 붙인
+    `{domain}Id` 형식을 사용합니다. 예: `userId`, `categoryId`,
+    `resetPolicyId`, `questId`.
 -   사용자가 수정 대상으로 지정하지 않은 문서와 소스는 직접 변경하지
     않습니다.
 -   Root Agent는 프로젝트 전반에 공통으로 적용할 구현 규칙을, FE/BE
@@ -100,7 +105,7 @@ MVP의 `CUSTOM`은 월/수/금처럼 사용자가 선택한 요일에 반복하�
 한정합니다. N일마다, 2주마다, 월간 반복, 특정 월의 마지막 날 및 그 밖의
 복잡한 캘린더 기반 반복 규칙은 MVP에서 구현하지 않습니다.
 
-주요 필드: - `categoryId`, `resetPolicyId` - `difficulty`: `EASY`,
+주요 필드: - `questId`, `categoryId`, `resetPolicyId` - `difficulty`: `EASY`,
 `NORMAL`, `HARD`, `EPIC` - `targetCount`, `targetTimeMinutes` -
 `baseExp`, `expPerMinute` - `active`
 

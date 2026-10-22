@@ -8,6 +8,11 @@
 
 세부 구현 규칙은 각 `agent.md`를 따릅니다.
 
+루트 공통 지침 문서의 실제 파일명은 `agent.md`이며, 백엔드 세부 지침
+문서는 `ilque-be/agent.md`입니다. 도메인 식별자 필드는 해당 도메인의
+lower camel case 이름에 `Id`를 붙인 `{domain}Id` 형식을 사용합니다.
+예: `userId`, `categoryId`, `resetPolicyId`, `questId`.
+
 ```text
 project-spec.md
 = 무엇을 만들고 어떤 규칙으로 동작해야 하는가
@@ -93,7 +98,7 @@ Quest는 반복적으로 관리할 가치가 있는 행동의 영구적인 정�
 
 | 필드 | 타입/값 | 설명 |
 |---|---|---|
-| id | Long | PK |
+| questId | Long | PK |
 | title | String | 퀘스트명 |
 | description | String | 상세 설명 |
 | questType | CHECK / TIME_BASED | 체크형 / 시간형 |
@@ -135,7 +140,7 @@ QuestExecution은 Quest의 특정 수행 주기에 대한 실제 수행 기록�
 
 | 필드 | 설명 |
 |---|---|
-| id | Execution PK |
+| questExecutionId | Execution PK |
 | questId | 원본 Quest FK |
 | periodStart / periodEnd | 수행 주기의 시작/종료 경계 |
 | status | PENDING / IN_PROGRESS / COMPLETED / MISSED / SKIPPED / REST_DAY |
@@ -162,7 +167,7 @@ ResetPolicy의 초기화 유형은 서로 다른 개념이며, 두 책임은 서
 
 | 필드 | 논리 타입/값 | 설명 및 제약 |
 |---|---|---|
-| id | 프로젝트 식별자 규칙 | 프로젝트에서 사용하는 식별자 규칙을 준수합니다. 현재 문서의 기존 ResetPolicy 정의에는 구체 자료형이 없으므로 저장 자료형은 기존 구현 규칙을 따릅니다. |
+| resetPolicyId | Long | ResetPolicy PK |
 | name | 문자열 | 정책 이름입니다. `null`, 빈 문자열, 공백만 있는 값은 허용하지 않습니다. |
 | resetType | `DAILY` / `WEEKLY` / `CUSTOM` | 초기화 유형입니다. |
 | resetTime | 현지 시각 | 초기화 기준 시각입니다. 별도 값이 없으면 `00:00`을 사용합니다. |
@@ -409,7 +414,7 @@ CalendarEvent는 Quest 수행을 보조하기 위한 일정/이벤트 관리 기
 
 | 필드 | 설명 |
 |---|---|
-| id | PK |
+| calendarEventId | PK |
 | userId | User FK |
 | title | 제목 |
 | description | 상세 메모 |
@@ -553,7 +558,7 @@ MVP 초기에는 Flyway 또는 Liquibase를 도입하지 않습니다. 향후 �
 ## 17. Complete 멱등성
 
 ```text
-POST /api/executions/{id}/complete
+POST /api/executions/{questExecutionId}/complete
 ```
 
 이미 `COMPLETED`인 Execution을 다시 완료 요청하면 기존 `earnedExp`와 상태를 반환하고 다음 작업을 다시 수행하지 않습니다.
@@ -571,13 +576,13 @@ POST /api/executions/{id}/complete
 ```text
 GET    /api/quests
 POST   /api/quests
-GET    /api/quests/{id}
-PATCH  /api/quests/{id}
-DELETE /api/quests/{id}
+GET    /api/quests/{questId}
+PATCH  /api/quests/{questId}
+DELETE /api/quests/{questId}
 
 GET    /api/reset-policies
 POST   /api/reset-policies
-PATCH  /api/reset-policies/{id}
+PATCH  /api/reset-policies/{resetPolicyId}
 ```
 
 ### Today / Execution / Focus
@@ -585,10 +590,10 @@ PATCH  /api/reset-policies/{id}
 ```text
 GET  /api/today
 POST /api/quests/{questId}/start
-POST /api/executions/{id}/complete
-POST /api/executions/{id}/skip
+POST /api/executions/{questExecutionId}/complete
+POST /api/executions/{questExecutionId}/skip
 POST /api/quests/{questId}/focus/start
-POST /api/focus/{sessionId}/stop
+POST /api/focus/{focusSessionId}/stop
 ```
 
 ### Achievement / Statistics
@@ -596,7 +601,7 @@ POST /api/focus/{sessionId}/stop
 ```text
 GET   /api/achievements
 GET   /api/achievements/unlocked
-PATCH /api/achievements/{id}/equip
+PATCH /api/achievements/{achievementId}/equip
 
 GET /api/statistics/today
 GET /api/statistics/week
@@ -607,10 +612,10 @@ GET /api/statistics/month
 
 ```text
 GET    /api/calendar/events
-GET    /api/calendar/events/{id}
+GET    /api/calendar/events/{calendarEventId}
 POST   /api/calendar/events
-PATCH  /api/calendar/events/{id}
-DELETE /api/calendar/events/{id}
+PATCH  /api/calendar/events/{calendarEventId}
+DELETE /api/calendar/events/{calendarEventId}
 GET    /api/calendar/upcoming
 GET    /api/calendar/date/{date}
 ```
