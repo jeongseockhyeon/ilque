@@ -296,9 +296,10 @@ Quest 구현 시 생성 시각의 저장 타입과 변환 규칙을 별도로 �
 
 - `DAILY`: 정책 `timezone`의 현지 날짜에서 매일 `resetTime`을 경계로 사용합니다.
 - `WEEKLY`: 정책 `timezone`에서 `weekStartDay`와 `resetTime`을 적용한 주간 경계를 사용합니다.
-- `CUSTOM + DAY`: 정확한 N×24시간이 아닌 달력상의 `interval`일 간격을 사용합니다. 첫 경계는 생성 `Instant`를 정책 시간대로 변환한 현지 날짜에 `interval`일을 더한 날짜의 `resetTime`입니다.
-- `CUSTOM + WEEK`: 정확한 N×168시간이 아닌 달력상의 `interval`주 간격을 사용합니다. 생성 시각의 현지 날짜가 속한 주의 `weekStartDay`를 구하고, 해당 시작일에 `interval`주를 더한 날짜의 `resetTime`을 첫 경계로 사용합니다.
-- 이후 경계는 각 유형의 첫 경계부터 동일한 달력 일·주 간격으로 계산합니다.
+- `CUSTOM + DAY`: 정확한 N×24시간이 아닌 달력상의 `interval`일 간격을 사용합니다. Quest 최초 생성 `Instant`를 정책 `timezone`으로 변환해 `creationDate`를 구하고, `creationDate.plusDays(interval)`의 날짜에 `resetTime`을 적용한 `Instant`를 최초 경계로 사용합니다.
+- `CUSTOM + WEEK`: 정확한 N×168시간이 아닌 달력상의 `interval`주 간격을 사용합니다. Quest 최초 생성 `Instant`를 정책 `timezone`으로 변환해 `creationDate`를 구하고, `weekStartDay`를 기준으로 `weekStartDate`를 계산한 뒤 `weekStartDate.plusWeeks(interval)`의 날짜에 `resetTime`을 적용한 `Instant`를 최초 경계로 사용합니다.
+- CUSTOM 최초 경계에는 하루 또는 일주일 이상의 최소 경과 시간을 보장하는 별도 보정을 적용하지 않습니다. 따라서 최초 경계까지의 실제 경과 시간은 하루 또는 일주일보다 짧을 수 있습니다.
+- 이후 경계는 각 유형의 최초 경계부터 동일한 달력 일·주 간격으로 계산합니다.
 - 기준은 `Instant`이며 정책 `timezone`의 현지 날짜·시각으로 계산한 뒤 다시 `Instant`로 변환합니다. 서버 로컬 시간이나 시스템 자정을 사용하지 않습니다.
 - DST로 존재하지 않는 현지 시각은 DST 간격만큼 앞으로 이동하고, 중복되는 현지 시각은 더 이른 오프셋의 첫 시각을 선택합니다. Java 시간 API 기본 동작에 의존한다면 이 동작을 테스트로 명시적으로 보장합니다.
 - 생성 시각 이전의 경계를 최초 경계로 선택하지 않습니다. 최초 경계는 생성 시각 이후 또는 생성 시각과 동일한 첫 적합 경계여야 합니다.
@@ -805,6 +806,9 @@ Quick Todo API는 실제 구현 계약이 정해지는 시점에 동일한 `/api
 - Reset 기간 계산
 - `CUSTOM + DAY`의 달력상 날짜 간격 계산
 - `CUSTOM + WEEK`의 `weekStartDay` 정렬 및 달력상 주 간격 계산
+- `CUSTOM + DAY`의 월요일 02:00/23:00 생성, `interval=1/3`, `resetTime=05:00`에 대한 화요일/목요일 최초 경계
+- `CUSTOM + WEEK`의 일요일 생성과 주 시작일 이후 생성, `interval=1` 및 `interval > 1`의 주 시작일 정렬
+- 동일한 생성 `Instant`를 서로 다른 `timezone`에 적용했을 때 현지 날짜에 따라 달라지는 최초 경계
 - 기본 `resetTime = 00:00` 및 생성 시각과 첫 경계의 관계
 - 유효한 `ZoneId`와 timezone별 계산
 - DST의 존재하지 않는 현지 시각 및 중복 현지 시각 처리
@@ -826,7 +830,9 @@ Quick Todo API는 실제 구현 계약이 정해지는 시점에 동일한 `/api
 ResetPolicy 계산 테스트는 시스템 시계나 서버 로컬 시간에 의존하지 않는
 고정 `Instant` 입력을 사용합니다. Java 시간 API의 DST 기본 동작을 사용할
 경우에도 존재하지 않는 시각은 앞으로 이동하고 중복 시각은 더 이른 오프셋을
-선택한다는 계약을 테스트로 명시합니다.
+선택한다는 계약을 테스트로 명시합니다. 현지 날짜·시각과 최종 `Instant`를
+구분하고, 날짜·주 간격이 고정된 24시간·168시간 덧셈으로 대체되지 않았는지도
+검증합니다.
 
 Quest 도메인이 구현되지 않은 현재 단계에서는 다음을 완료 조건으로 요구하지
 않습니다.

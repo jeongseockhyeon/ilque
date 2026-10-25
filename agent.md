@@ -186,6 +186,9 @@ ResetPolicy 작업 시 다음 공통 원칙을 적용합니다.
 - Category와 ResetPolicy는 독립적인 도메인이며, Quest가 각각을 참조하는 구조를 전제로 합니다. 둘 사이에 직접적인 소유 관계를 만들지 않습니다.
 - `DAILY`, `WEEKLY`, `CUSTOM`의 세부 규칙과 `timezone`·DST 처리는 `docs/project-spec.md` 및 `ilque-be/agent.md`의 정의를 따릅니다.
 - 날짜 및 주 간격은 달력상의 간격으로 계산하며 고정된 초 단위 간격으로 대체하지 않습니다.
+- `CUSTOM + DAY`의 최초 경계는 Quest 최초 생성 `Instant`를 정책 `timezone`의 현지 날짜로 변환한 뒤 `interval`일을 더한 날짜의 `resetTime`으로 계산합니다.
+- `CUSTOM + WEEK`의 최초 경계는 Quest 최초 생성 `Instant`가 포함된 주의 `weekStartDay` 기준 시작일에 `interval`주를 더한 날짜의 `resetTime`으로 계산합니다.
+- CUSTOM 최초 경계에는 최소 주기 보정을 적용하지 않으며, DST의 비존재 현지 시각은 앞으로 이동하고 중복 현지 시각은 더 이른 실제 시점의 오프셋을 사용합니다.
 - Quest별 초기화 상태와 `lastProcessedResetAt`은 정책 자체가 공유하는 전역 상태와 혼동하지 않습니다.
 - 현재 Quest 도메인이 구현되지 않은 동안에는 ResetPolicy 자체의 모델, 입력 검증, 경계 계산 및 단위 테스트를 우선하며, Quest 연동은 후속 요구사항으로 분리합니다.
 

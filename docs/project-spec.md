@@ -209,15 +209,21 @@ ResetPolicy의 초기화 유형은 서로 다른 개념이며, 두 책임은 서
 모든 기준 시각은 `Instant`로 받고, 정책의 `timezone`을 기준으로 현지 날짜와
 시각을 계산한 뒤 다시 `Instant`로 변환합니다.
 
-- `CUSTOM + DAY`의 첫 경계는 Quest의 원래 생성 시각을 정책 시간대로 변환한 현지 날짜에 `interval`일을 더한 날짜의 `resetTime`입니다.
-- `CUSTOM + DAY`의 이후 경계는 첫 경계에서 시작하여 `interval`일의 달력 간격으로 반복합니다.
-- `CUSTOM + WEEK`의 첫 경계는 Quest의 원래 생성 시각이 속한 주의 `weekStartDay`를 계산하고, 그 날짜에 `interval`주를 더한 뒤 `resetTime`을 적용합니다.
-- `CUSTOM + WEEK`의 이후 경계는 첫 경계부터 `interval`주의 달력 간격으로 반복합니다.
-- 위에서 말하는 생성 시각은 ResetPolicy 생성 시각이 아니라 해당 정책을 참조하는 Quest의 원래 생성 시각입니다. Quest 도메인 구현 전에는 이 계산을 실행하지 않습니다.
+- `CUSTOM + DAY`의 최초 경계는 Quest 최초 생성 `Instant`를 정책 `timezone`의 현지 날짜(`creationDate`)로 변환한 뒤, `creationDate.plusDays(interval)`의 날짜에 `resetTime`을 적용해 계산합니다.
+- `CUSTOM + WEEK`의 최초 경계는 Quest 최초 생성 `Instant`를 정책 `timezone`의 현지 날짜(`creationDate`)로 변환하고, `weekStartDay`를 기준으로 해당 주의 시작일(`weekStartDate`)을 구한 뒤 `weekStartDate.plusWeeks(interval)`의 날짜에 `resetTime`을 적용해 계산합니다.
+- `CUSTOM` 최초 경계에는 최소 주기를 보장하기 위한 추가 조정을 적용하지 않습니다. 따라서 최초 경계까지의 실제 경과 시간이 하루 또는 일주일보다 짧을 수 있습니다.
+- `CUSTOM + DAY`와 `CUSTOM + WEEK`의 이후 경계는 각각 최초 경계에서 같은 달력 일·주 간격으로 계산합니다.
+- 위 생성 시각은 ResetPolicy 생성 시각이 아니라 해당 정책을 참조하는 Quest의 최초 생성 `Instant`입니다. Quest 도메인 구현 전에는 이 계산을 실행하지 않습니다.
 - `DAILY` 및 `WEEKLY`는 각 규칙에 맞는 경계를 계산하되, 최초 경계로 Quest 생성 시점 이전의 경계를 잘못 선택하지 않습니다. 최초 경계는 생성 시각 이후(경계 시각과 동일한 경우 포함)의 첫 적합 경계로 정합니다.
 - DST로 존재하지 않는 현지 시각은 DST 간격만큼 앞으로 이동합니다.
 - DST로 중복되는 현지 시각은 더 이른 오프셋에 해당하는 첫 번째 시각을 선택합니다.
 - 달력상의 날짜·주 간격은 정확한 초 단위 간격으로 바꾸지 않습니다.
+
+예를 들어 `CUSTOM + DAY`, `interval=1`, `resetTime=05:00`이면 월요일
+02:00 생성과 월요일 23:00 생성 모두 화요일 05:00을 최초 경계로 계산합니다.
+`interval=3`이면 목요일 05:00입니다. `CUSTOM + WEEK`에서 주 시작일이
+월요일이고 `interval=1`, `resetTime=05:00`이면 일요일 생성과 월요일
+06:00 생성 모두 다음 월요일 05:00을 최초 경계로 계산합니다.
 
 예시:
 
@@ -268,6 +274,9 @@ ResetPolicy 구현 시 최소한 다음을 검증할 수 있어야 합니다.
 - `name`의 null·빈 문자열·공백 입력, 유효하지 않은 `ZoneId`, 잘못된 enum 값, `interval < 1`을 거부합니다.
 - `DAILY`/`WEEKLY`의 CUSTOM 전용 필드 조합을 거부하고, `WEEKLY` 및 `CUSTOM + WEEK`의 `weekStartDay` 누락을 거부합니다.
 - `CUSTOM + DAY`와 `CUSTOM + WEEK`의 첫 경계 및 이후 경계가 달력 날짜·주 간격으로 계산되는지 검증합니다.
+- `CUSTOM + DAY`의 생성 시각(현지 월요일 02:00/23:00), `interval=1/3`에 대한 화요일·목요일 `resetTime` 경계를 검증합니다.
+- `CUSTOM + WEEK`의 일요일 및 주 시작일 이후 생성 시각, `interval=1` 및 `interval > 1`의 주 시작일 정렬을 검증합니다.
+- 동일한 생성 `Instant`를 서로 다른 `timezone`에 적용했을 때 현지 날짜에 따라 최초 경계가 달라질 수 있음을 검증합니다.
 - `resetTime` 기본값 `00:00`, `timezone`, `weekStartDay`, DST의 존재하지 않거나 중복되는 현지 시각 처리를 검증합니다.
 - Quest별 처리 상태, 정책 재할당, 상태 초기화 및 앱 재시작 복구의 통합 검증은 Quest 도메인 구현 이후로 보류합니다. 현재 ResetPolicy 단독 구현의 완료 기준에는 포함하지 않습니다.
 
