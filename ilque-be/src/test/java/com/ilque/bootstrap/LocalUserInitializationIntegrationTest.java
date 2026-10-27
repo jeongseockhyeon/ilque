@@ -56,6 +56,8 @@ class LocalUserInitializationIntegrationTest {
         assertThat(userRepository.count()).isEqualTo(1);
         User user = userService.findLocalUser().orElseThrow();
         assertThat(user.getDisplayName()).isEqualTo("Local User");
+        assertThat(user.getCreatedAt()).isNotNull();
+        assertThat(user.getUpdatedAt()).isNotNull();
     }
 
     @Test

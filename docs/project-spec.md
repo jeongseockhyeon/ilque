@@ -8,6 +8,11 @@
 
 세부 구현 규칙은 각 `agent.md`를 따릅니다.
 
+루트 공통 지침 문서의 실제 파일명은 `agent.md`이며, 백엔드 세부 지침
+문서는 `ilque-be/agent.md`입니다. 도메인 식별자 필드는 해당 도메인의
+lower camel case 이름에 `Id`를 붙인 `{domain}Id` 형식을 사용합니다.
+예: `userId`, `categoryId`, `resetPolicyId`, `questId`.
+
 ```text
 project-spec.md
 = 무엇을 만들고 어떤 규칙으로 동작해야 하는가
@@ -65,6 +70,10 @@ ResetPolicy ──< Quest
 Category ──< CalendarEvent (선택)
 ```
 
+`Category`와 `ResetPolicy`는 서로 독립적인 도메인입니다. Quest가 각각을
+참조할 뿐이며, Category가 ResetPolicy를 소유하거나 ResetPolicy가 Category에
+종속되는 직접 관계는 만들지 않습니다.
+
 ### 4.1 User와 Identity
 
 ilque MVP는 개인용 데스크탑 앱이며, 회원가입과 로그인 기능을 제공하지 않습니다. 다만 `User`는 사용자 소유 데이터의 기준 Entity로 유지합니다.
@@ -89,7 +98,7 @@ Quest는 반복적으로 관리할 가치가 있는 행동의 영구적인 정�
 
 | 필드 | 타입/값 | 설명 |
 |---|---|---|
-| id | Long | PK |
+| questId | Long | PK |
 | title | String | 퀘스트명 |
 | description | String | 상세 설명 |
 | questType | CHECK / TIME_BASED | 체크형 / 시간형 |
@@ -131,7 +140,7 @@ QuestExecution은 Quest의 특정 수행 주기에 대한 실제 수행 기록�
 
 | 필드 | 설명 |
 |---|---|
-| id | Execution PK |
+| questExecutionId | Execution PK |
 | questId | 원본 Quest FK |
 | periodStart / periodEnd | 수행 주기의 시작/종료 경계 |
 | status | PENDING / IN_PROGRESS / COMPLETED / MISSED / SKIPPED / REST_DAY |
@@ -144,22 +153,77 @@ FocusSession은 하나의 Execution에 여러 개 연결될 수 있으며, 분�
 
 ## 7. ResetPolicy와 Execution 생성
 
-`RecurrenceType`은 Quest가 언제 수행 대상이 되는지를 결정하고, `ResetPolicy`는 해당 수행 주기의 시작/종료 경계를 결정합니다. 두 책임은 서로 대체하지 않습니다.
+`ResetPolicy`는 Quest의 반복 여부를 결정하는 도메인이 아닙니다. Quest의
+`RecurrenceType`은 수행 대상 시점을 결정하고, `ResetPolicy`는 그 Quest의
+주기 경계가 언제 발생하는지를 결정합니다. 따라서 Quest의 반복 유형과
+ResetPolicy의 초기화 유형은 서로 다른 개념이며, 두 책임은 서로 대체하지
+않습니다.
 
 - `RecurrenceType`: `ONCE`, `DAILY`, `WEEKLY`, `CUSTOM` 및 `CUSTOM`의 선택 요일에 따라 수행 대상을 판단합니다.
-- `ResetPolicy`: 설정된 `resetTime`, `timezone`, `weekStartDay`를 기준으로 Execution의 `periodStart`와 `periodEnd`를 계산합니다.
+- `ResetPolicy`: 설정된 `resetType`, `resetTime`, `timezone`, `weekStartDay` 및 CUSTOM 간격을 기준으로 Execution의 `periodStart`와 `periodEnd`를 계산합니다.
+- Quest는 `Category`와 `ResetPolicy`를 각각 참조합니다. 둘 사이에 직접적인 소유 관계는 없습니다.
 
 ### ResetPolicy 필드
 
-| 필드 | 설명 |
-|---|---|
-| id | PK |
-| name | 정책 이름 |
-| resetType | DAILY / WEEKLY / CUSTOM |
-| resetTime | 리셋 기준 시각 |
-| timezone | 기준 타임존 |
-| weekStartDay | 주간 주기 시작 요일 |
-| active | 활성 여부 |
+| 필드 | 논리 타입/값 | 설명 및 제약 |
+|---|---|---|
+| resetPolicyId | Long | ResetPolicy PK |
+| name | 문자열 | 정책 이름입니다. `null`, 빈 문자열, 공백만 있는 값은 허용하지 않습니다. |
+| resetType | `DAILY` / `WEEKLY` / `CUSTOM` | 초기화 유형입니다. |
+| resetTime | 현지 시각 | 초기화 기준 시각입니다. 별도 값이 없으면 `00:00`을 사용합니다. |
+| timezone | 유효한 Java `ZoneId` 식별자 | 현지 날짜·시각과 경계 계산에 사용합니다. |
+| weekStartDay | 주 시작 요일 | `WEEKLY`에서 필수이며 `CUSTOM + WEEK`에서도 사용합니다. |
+| active | Boolean | 정책의 활성 여부입니다. |
+| interval | 1 이상의 정수 | `CUSTOM`에서 필수인 간격입니다. `DAILY` 및 `WEEKLY`에는 사용하지 않습니다. |
+| intervalUnit | `DAY` / `WEEK` | `CUSTOM`에서 필수인 간격 단위입니다. |
+
+현재 문서에서 위 필드의 저장 자료형이 기존 프로젝트 규칙과 충돌하는
+지점은 확인되지 않았습니다. 실제 Entity/DTO의 자료형 매핑은 구현 시
+`ilque-be/agent.md`와 기존 코드 규칙을 함께 확인합니다.
+
+### Quest별 Reset 처리 상태
+
+`lastProcessedResetAt`은 초기화 경계를 `Instant`로 기록하는 값입니다. 아직
+처리한 경계가 없으면 `null`입니다. 이 값은 정책 전체의 전역 상태가 아니라
+정책을 참조하는 **Quest별 처리 상태**로 해석해야 합니다. 같은 ResetPolicy를
+사용하는 Quest라도 생성 시각, 현재 주기, 처리 성공 시점이 다를 수 있기
+때문입니다.
+
+따라서 `lastProcessedResetAt`을 ResetPolicy 자체의 단일 필드로 두어 Quest별
+상태를 덮어쓰지 않습니다. Quest 또는 별도의 Quest별 Reset 처리 상태로
+저장하는 구체 모델은 Quest 도메인 구현 시 확정하며, 현재 단계에서는 이를
+요구사항으로만 정의합니다.
+
+### ResetType별 규칙
+
+- `DAILY`: 정책의 `timezone`에서 매일 `resetTime`을 주기 경계로 사용합니다.
+- `WEEKLY`: 정책의 `timezone`에서 `weekStartDay`와 `resetTime`을 주기 경계로 사용합니다.
+- `CUSTOM + DAY`: `interval`일의 **달력 간격**으로 계산합니다. 정확한 초 단위 간격으로 대체하지 않습니다.
+- `CUSTOM + WEEK`: `weekStartDay`를 기준으로 `interval`주의 **달력 간격**으로 계산합니다. 정확한 168시간 단위로 대체하지 않습니다.
+- `CUSTOM`은 `interval >= 1` 및 `intervalUnit`을 모두 요구합니다.
+- `DAILY` 및 `WEEKLY` 요청에 CUSTOM 전용 `interval` 또는 `intervalUnit`이 전달되면 요청을 거부합니다. 프런트엔드는 해당 유형에서 사용하지 않는 필드를 요청 데이터에서 제거합니다.
+- `weekStartDay`는 `WEEKLY`와 `CUSTOM + WEEK`에서 사용합니다. `CUSTOM + DAY`에서는 사용하지 않습니다. `CUSTOM + DAY`의 `weekStartDay` 불필요 입력을 거부할지는 기존 API 규칙과 맞춰야 하며, 현재 기존 규칙이 확인되지 않았으므로 확정 요구사항이 아닌 제안 사항으로 둡니다.
+
+### 경계 계산 및 시간대
+
+모든 기준 시각은 `Instant`로 받고, 정책의 `timezone`을 기준으로 현지 날짜와
+시각을 계산한 뒤 다시 `Instant`로 변환합니다.
+
+- `CUSTOM + DAY`의 최초 경계는 Quest 최초 생성 `Instant`를 정책 `timezone`의 현지 날짜(`creationDate`)로 변환한 뒤, `creationDate.plusDays(interval)`의 날짜에 `resetTime`을 적용해 계산합니다.
+- `CUSTOM + WEEK`의 최초 경계는 Quest 최초 생성 `Instant`를 정책 `timezone`의 현지 날짜(`creationDate`)로 변환하고, `weekStartDay`를 기준으로 해당 주의 시작일(`weekStartDate`)을 구한 뒤 `weekStartDate.plusWeeks(interval)`의 날짜에 `resetTime`을 적용해 계산합니다.
+- `CUSTOM` 최초 경계에는 최소 주기를 보장하기 위한 추가 조정을 적용하지 않습니다. 따라서 최초 경계까지의 실제 경과 시간이 하루 또는 일주일보다 짧을 수 있습니다.
+- `CUSTOM + DAY`와 `CUSTOM + WEEK`의 이후 경계는 각각 최초 경계에서 같은 달력 일·주 간격으로 계산합니다.
+- 위 생성 시각은 ResetPolicy 생성 시각이 아니라 해당 정책을 참조하는 Quest의 최초 생성 `Instant`입니다. Quest 도메인 구현 전에는 이 계산을 실행하지 않습니다.
+- `DAILY` 및 `WEEKLY`는 각 규칙에 맞는 경계를 계산하되, 최초 경계로 Quest 생성 시점 이전의 경계를 잘못 선택하지 않습니다. 최초 경계는 생성 시각 이후(경계 시각과 동일한 경우 포함)의 첫 적합 경계로 정합니다.
+- DST로 존재하지 않는 현지 시각은 DST 간격만큼 앞으로 이동합니다.
+- DST로 중복되는 현지 시각은 더 이른 오프셋에 해당하는 첫 번째 시각을 선택합니다.
+- 달력상의 날짜·주 간격은 정확한 초 단위 간격으로 바꾸지 않습니다.
+
+예를 들어 `CUSTOM + DAY`, `interval=1`, `resetTime=05:00`이면 월요일
+02:00 생성과 월요일 23:00 생성 모두 화요일 05:00을 최초 경계로 계산합니다.
+`interval=3`이면 목요일 05:00입니다. `CUSTOM + WEEK`에서 주 시작일이
+월요일이고 `interval=1`, `resetTime=05:00`이면 일요일 생성과 월요일
+06:00 생성 모두 다음 월요일 05:00을 최초 경계로 계산합니다.
 
 예시:
 
@@ -170,9 +234,62 @@ FocusSession은 하나의 Execution에 여러 개 연결될 수 있으며, 분�
 
 Reset은 Quest 상태를 초기화하는 작업이 아닙니다. 앱 실행 또는 Today 조회 시점에 Next Reset을 계산하고 필요한 새로운 QuestExecution을 생성합니다. 기존 Execution은 History로 보존합니다.
 
+### 정책 수정과 비활성화
+
+- 정책 이름 변경은 허용합니다.
+- 사용 중인 정책의 초기화 규칙(`resetType`, `resetTime`, `timezone`, `weekStartDay`, `interval`, `intervalUnit`)은 직접 변경하지 않습니다. 규칙 변경이 필요하면 새 정책을 생성하고 대상 Quest를 재할당합니다.
+- 정책의 활성 여부를 변경할 때는 해당 정책을 사용하는 Quest와의 관계를 검증합니다.
+- 비활성 정책은 신규 Quest 할당에 사용할 수 없습니다.
+- 활성 Quest가 참조하는 정책을 비활성화하려면 해당 Quest를 다른 활성 정책으로 재할당하거나 Quest를 비활성화하는 등의 선행 조치가 필요합니다.
+- Quest 도메인이 구현되기 전에는 위 규칙을 요구사항으로만 기록하며, Quest 연동 로직은 구현하지 않습니다.
+
+### 정책 재할당(향후 Quest 연동 요구사항)
+
+Quest를 다른 ResetPolicy로 재할당할 때는 다음을 요구합니다.
+
+1. 대상 정책이 활성 상태인지 확인합니다.
+2. Quest의 원래 생성 시각 `Instant`를 유지합니다.
+3. 새 정책의 `timezone`과 규칙으로 주기를 다시 계산합니다.
+4. 현재 주기 상태를 초기화해야 하는지 판단합니다.
+5. 상태 초기화가 필요하면 사용자 확인을 받습니다.
+6. 최종 확인 요청 시점에 대상 정책의 활성 상태와 Quest 참조 상태를 다시 검증합니다.
+7. 정책 참조 변경, 필요한 상태 초기화 및 `lastProcessedResetAt` 기록을 원자적으로 반영합니다.
+8. 사용자가 취소하면 기존 정책 참조와 상태를 유지합니다.
+
+현재 단계에서는 이 내용을 향후 Quest 연동 요구사항으로만 기록합니다.
+
+### 앱 재시작과 누락된 초기화(향후 Quest 연동 요구사항)
+
+- 앱 시작 시 지난 모든 초기화 경계를 순차 재생하지 않고, 현재 시점에 적용되어야 하는 최신 경계를 계산해 현재 주기 상태를 복구합니다.
+- 앱 실행 중에도 경계 도달을 처리할 수 있어야 합니다.
+- Quest별 `lastProcessedResetAt`과 현재 적용해야 하는 경계를 비교합니다.
+- Quest 상태 변경과 처리 경계 기록은 하나의 트랜잭션으로 처리합니다.
+- 주기별 이력 저장은 MVP 필수 범위에 추가하지 않습니다.
+- Quest 구현이 완료되기 전에는 실제 복구 로직을 구현하지 않습니다.
+
+### 검증 기준
+
+ResetPolicy 구현 시 최소한 다음을 검증할 수 있어야 합니다.
+
+- `name`의 null·빈 문자열·공백 입력, 유효하지 않은 `ZoneId`, 잘못된 enum 값, `interval < 1`을 거부합니다.
+- `DAILY`/`WEEKLY`의 CUSTOM 전용 필드 조합을 거부하고, `WEEKLY` 및 `CUSTOM + WEEK`의 `weekStartDay` 누락을 거부합니다.
+- `CUSTOM + DAY`와 `CUSTOM + WEEK`의 첫 경계 및 이후 경계가 달력 날짜·주 간격으로 계산되는지 검증합니다.
+- `CUSTOM + DAY`의 생성 시각(현지 월요일 02:00/23:00), `interval=1/3`에 대한 화요일·목요일 `resetTime` 경계를 검증합니다.
+- `CUSTOM + WEEK`의 일요일 및 주 시작일 이후 생성 시각, `interval=1` 및 `interval > 1`의 주 시작일 정렬을 검증합니다.
+- 동일한 생성 `Instant`를 서로 다른 `timezone`에 적용했을 때 현지 날짜에 따라 최초 경계가 달라질 수 있음을 검증합니다.
+- `resetTime` 기본값 `00:00`, `timezone`, `weekStartDay`, DST의 존재하지 않거나 중복되는 현지 시각 처리를 검증합니다.
+- Quest별 처리 상태, 정책 재할당, 상태 초기화 및 앱 재시작 복구의 통합 검증은 Quest 도메인 구현 이후로 보류합니다. 현재 ResetPolicy 단독 구현의 완료 기준에는 포함하지 않습니다.
+
 ### 장기 미접속
 
 앱이 장기간 종료되어 있었던 경우 개별 MISSED Execution은 최대 7개 기간까지만 생성합니다. 그보다 오래된 미수행분은 `UserStatisticsSummary.longTermMissedCount`에 요약하여 대량의 레코드 생성과 SQLite 쓰기 폭증을 방지합니다.
+
+다만 이번 ResetPolicy 확정 요구사항은 앱 시작 시 지난 모든 초기화 경계를
+순차 재생하지 않고 현재 적용해야 하는 최신 경계로 복구하도록 요구합니다.
+따라서 위의 최대 7개 `MISSED` 생성 규칙을 최신 경계 복구와 어떤 순서로
+결합할지는 Quest 도메인 연동 시 추가 확정이 필요합니다. 현재 문서에서는
+두 요구사항을 모두 보존하며, Quest 구현 전에는 어느 쪽도 구현 완료 기준으로
+간주하지 않습니다.
 
 ## 8. EXP 및 Level
 
@@ -306,7 +423,7 @@ CalendarEvent는 Quest 수행을 보조하기 위한 일정/이벤트 관리 기
 
 | 필드 | 설명 |
 |---|---|
-| id | PK |
+| calendarEventId | PK |
 | userId | User FK |
 | title | 제목 |
 | description | 상세 메모 |
@@ -450,7 +567,7 @@ MVP 초기에는 Flyway 또는 Liquibase를 도입하지 않습니다. 향후 �
 ## 17. Complete 멱등성
 
 ```text
-POST /api/executions/{id}/complete
+POST /api/executions/{questExecutionId}/complete
 ```
 
 이미 `COMPLETED`인 Execution을 다시 완료 요청하면 기존 `earnedExp`와 상태를 반환하고 다음 작업을 다시 수행하지 않습니다.
@@ -468,13 +585,13 @@ POST /api/executions/{id}/complete
 ```text
 GET    /api/quests
 POST   /api/quests
-GET    /api/quests/{id}
-PATCH  /api/quests/{id}
-DELETE /api/quests/{id}
+GET    /api/quests/{questId}
+PATCH  /api/quests/{questId}
+DELETE /api/quests/{questId}
 
 GET    /api/reset-policies
 POST   /api/reset-policies
-PATCH  /api/reset-policies/{id}
+PATCH  /api/reset-policies/{resetPolicyId}
 ```
 
 ### Today / Execution / Focus
@@ -482,10 +599,10 @@ PATCH  /api/reset-policies/{id}
 ```text
 GET  /api/today
 POST /api/quests/{questId}/start
-POST /api/executions/{id}/complete
-POST /api/executions/{id}/skip
+POST /api/executions/{questExecutionId}/complete
+POST /api/executions/{questExecutionId}/skip
 POST /api/quests/{questId}/focus/start
-POST /api/focus/{sessionId}/stop
+POST /api/focus/{focusSessionId}/stop
 ```
 
 ### Achievement / Statistics
@@ -493,7 +610,7 @@ POST /api/focus/{sessionId}/stop
 ```text
 GET   /api/achievements
 GET   /api/achievements/unlocked
-PATCH /api/achievements/{id}/equip
+PATCH /api/achievements/{achievementId}/equip
 
 GET /api/statistics/today
 GET /api/statistics/week
@@ -504,10 +621,10 @@ GET /api/statistics/month
 
 ```text
 GET    /api/calendar/events
-GET    /api/calendar/events/{id}
+GET    /api/calendar/events/{calendarEventId}
 POST   /api/calendar/events
-PATCH  /api/calendar/events/{id}
-DELETE /api/calendar/events/{id}
+PATCH  /api/calendar/events/{calendarEventId}
+DELETE /api/calendar/events/{calendarEventId}
 GET    /api/calendar/upcoming
 GET    /api/calendar/date/{date}
 ```

@@ -12,6 +12,11 @@
 >
 > 상위 문서와 본 문서가 충돌하면 `docs/project-spec.md`를 설계 기준으로 하며, 구현 범위에 추가 판단이 필요하면 충돌 내용을 먼저 사용자에게 명시합니다.
 
+프로젝트 루트 공통 지침 문서의 실제 파일명은 `agent.md`이며, 본 문서는
+백엔드 전용 지침 문서 `ilque-be/agent.md`입니다. 도메인 식별자 필드는
+해당 도메인의 lower camel case 이름에 `Id`를 붙인 `{domain}Id` 형식을
+사용합니다. 예: `userId`, `categoryId`, `resetPolicyId`, `questId`.
+
 ---
 
 ## 언어 및 응답 규칙
@@ -79,7 +84,7 @@ ilque-be/
     │   │   │   ├── focus/          # FocusSession
     │   │   │   ├── statistics/     # StatisticsService / UserStatisticsSummary
     │   │   │   ├── category/       # Category
-    │   │   │   ├── reset/          # ResetPolicy
+    │   │   │   ├── resetpolicy/    # ResetPolicy
     │   │   │   ├── achievement/    # Achievement / UserAchievement
     │   │   │   └── calendar/       # CalendarEvent
     │   │   └── global/
@@ -215,12 +220,102 @@ ResetPolicy는 다음과 같은 정책을 표현할 수 있습니다.
 - timezone
 - weekStartDay
 - active
+- `interval` (`CUSTOM` 전용)
+- `intervalUnit` (`CUSTOM` 전용: `DAY` 또는 `WEEK`)
 
 시간 계산 시 시스템 자정(00:00)을 임의로 기준으로 사용하지 말고 Quest에 연결된 ResetPolicy와 timezone을 기준으로 판단합니다.
 
 장기간 앱이 꺼져 있었던 경우 Lookback은 최대 **7개 기간**까지만 개별 QuestExecution을 생성합니다. QuestExecution 조회와 Streak 관련 계산도 기본적으로 최대 7개 기간만 직접 조회합니다. 7개 기간보다 오래된 미수행분은 개별 Execution을 대량 생성하거나 무제한 조회하지 않고 `UserStatisticsSummary.longTermMissedCount` 등의 장기 집계로 처리합니다.
 
-`ResetCalculator` 등의 유틸리티를 사용할 수 있지만, 도메인 규칙 자체를 유틸리티에 숨겨서는 안 됩니다.
+현재 ResetPolicy 엔티티는 `com.ilque.domain.resetpolicy.entity` 패키지의
+`ResetPolicy`와 `ResetType`으로 존재합니다. 기존 구현의 기준은 다음과
+같습니다.
+
+- 식별자는 `resetPolicyId`라는 `Long` PK를 사용합니다. 기존 프로젝트의 식별자 명명 규칙이므로 임의로 `id`로 변경하지 않습니다.
+- `resetTime`은 `LocalTime`입니다. 생략된 입력은 `00:00`으로 정규화하는 것을 기본 기준으로 합니다.
+- `timezone`은 현재 엔티티에서 `String`으로 저장합니다. 저장 타입을 `ZoneId`로 임의 변경하지 않고, DTO/도메인 검증에서 `ZoneId.of(value)`가 성공하는 유효한 Java `ZoneId` 식별자인지 확인합니다.
+- `weekStartDay`는 `DayOfWeek` enum을 사용합니다.
+- `name`은 `null`, 빈 문자열, 공백만 있는 값을 허용하지 않습니다.
+- `resetType`은 `DAILY`, `WEEKLY`, `CUSTOM`만 허용합니다.
+- `active`는 정책 활성 여부를 나타냅니다.
+- 현재 엔티티에는 `interval`과 `intervalUnit`이 아직 없으므로, CUSTOM 구현 시 기존 구조와 스키마 변경 영향을 먼저 확인한 뒤 추가합니다. 이번 작업에서는 Java 코드를 변경하지 않습니다.
+
+현재 ResetPolicy DTO, Service, Repository, 경계 계산 컴포넌트 및 ResetPolicy
+테스트는 구현되어 있지 않습니다. 따라서 아래 기준은 구현 전 계약이며,
+구현 완료를 의미하지 않습니다.
+
+`lastProcessedResetAt`은 여러 Quest가 공유하는 ResetPolicy의 필드가
+아닙니다. Quest별로 처리된 경계를 나타내는 `Instant` 상태이며, 아직 처리한
+경계가 없으면 `null`입니다. Quest 도메인이 없는 현재 단계에서는
+ResetPolicy 엔티티에 이 필드를 추가하지 않습니다. 향후 Quest 자체 또는
+별도 Quest별 Reset 처리 상태에 저장할 위치를 결정해야 하며, 같은 정책을
+참조하는 Quest 사이에서 하나의 값을 공유하지 않아야 합니다.
+
+또한 현재 공통 `Base`의 생성 시각은 `LocalDateTime`입니다. 경계 계산의
+생성 시각은 정책 시간대 변환이 가능한 원본 `Instant`를 사용해야 하므로,
+Quest 구현 시 생성 시각의 저장 타입과 변환 규칙을 별도로 정합화해야 합니다.
+
+#### ResetPolicy 입력 및 도메인 검증 책임
+
+검증은 다음처럼 계층별 책임을 구분합니다.
+
+**DTO 및 입력 경계**
+
+- 필수값 누락, 명시적 `null`, 공백 문자열, 정수 범위, enum 값을 검증합니다.
+- 필수 필드의 명시적 `null`은 누락과 동일하게 허용하지 않습니다.
+- `resetTime`을 생략하면 `00:00`으로 정규화합니다. 명시적 `null`을 생략과 동일하게 취급할지는 현재 DTO/API 계약이 없으므로 구현 전에 결정하며, 별도 합의가 없으면 명시적 `null`은 검증 오류로 처리합니다.
+- `timezone`은 `ZoneId.of(...)`로 검증하고, 잘못된 식별자는 요청 오류로 거부합니다.
+- `DAILY` 또는 `WEEKLY` 요청에 `interval` 또는 `intervalUnit`이 전달되면 거부합니다. 프런트엔드는 사용하지 않는 필드를 요청 데이터에서 제거합니다.
+- `CUSTOM` 요청은 `interval >= 1`인 정수와 `intervalUnit`을 모두 요구하며, `intervalUnit`은 `DAY` 또는 `WEEK`만 허용합니다.
+- `WEEKLY` 요청은 `weekStartDay`를 요구합니다. `CUSTOM + WEEK`도 `weekStartDay`를 요구하고, `CUSTOM + DAY`에서는 사용하지 않습니다.
+- `CUSTOM + DAY`에서 사용하지 않는 `weekStartDay`를 명시적으로 거부할지는 현재 API 규칙이 없으므로 미확정 사항입니다. 구현 전 API 계약에서 결정하며, 프런트엔드는 해당 필드를 보내지 않습니다.
+
+**도메인 불변식**
+
+- 유효한 `resetType`, `timezone`, `name`을 유지합니다.
+- `resetType`과 `interval`, `intervalUnit`, `weekStartDay`의 조합이 일관적인지 검증합니다.
+- `CUSTOM`은 유효한 간격과 단위를 가져야 하며, `DAILY`와 `WEEKLY`는 CUSTOM 전용 필드를 가지지 않아야 합니다.
+- 도메인 객체 생성·변경 시에도 핵심 불변식을 보장하되, DTO 검증과 동일한 규칙을 무의미하게 복사하지 않습니다. 입력 형식 검증은 DTO, 도메인 상태의 항상 참이어야 하는 조건은 도메인이 담당합니다.
+
+**Service 계층**
+
+- 정책 활성 여부와 정책 수정·비활성화 조건을 검증합니다.
+- 사용 중인 정책의 초기화 규칙은 직접 변경하지 않습니다. 규칙 변경은 새 정책 생성과 대상 Quest 재할당으로 처리합니다.
+- 데이터 변경 메서드는 Service 계층의 `@Transactional`을 기본으로 사용합니다.
+- 사용자 확인을 기다리는 동안 트랜잭션을 유지하지 않습니다. 확인 후 최종 변경 요청에서 활성 상태, 사용 관계 등 조건을 다시 조회·검증합니다.
+- Quest 연동 전에는 활성 Quest 참조 여부 검증, 재할당, 상태 초기화 및 처리 경계 기록을 구현하지 않고 향후 연동 조건으로만 유지합니다.
+
+#### Reset 경계 계산 컴포넌트
+
+경계 계산은 Entity나 Service에 복잡하게 흩어 놓지 않고, 프로젝트의
+`domain.resetpolicy` 구조에 적합한 별도 순수 계산 컴포넌트(예:
+`ResetBoundaryCalculator`)로 분리하는 것을 우선 검토합니다. 입력은
+정책 값과 기준 `Instant`이고, 출력은 계산된 경계 `Instant`가 되도록 하여
+시간 고정이 가능한 단위 테스트를 작성할 수 있어야 합니다. 도메인 규칙의
+의미와 검증 책임을 계산 컴포넌트 내부에 숨기지 않습니다.
+
+- `DAILY`: 정책 `timezone`의 현지 날짜에서 매일 `resetTime`을 경계로 사용합니다.
+- `WEEKLY`: 정책 `timezone`에서 `weekStartDay`와 `resetTime`을 적용한 주간 경계를 사용합니다.
+- `CUSTOM + DAY`: 정확한 N×24시간이 아닌 달력상의 `interval`일 간격을 사용합니다. Quest 최초 생성 `Instant`를 정책 `timezone`으로 변환해 `creationDate`를 구하고, `creationDate.plusDays(interval)`의 날짜에 `resetTime`을 적용한 `Instant`를 최초 경계로 사용합니다.
+- `CUSTOM + WEEK`: 정확한 N×168시간이 아닌 달력상의 `interval`주 간격을 사용합니다. Quest 최초 생성 `Instant`를 정책 `timezone`으로 변환해 `creationDate`를 구하고, `weekStartDay`를 기준으로 `weekStartDate`를 계산한 뒤 `weekStartDate.plusWeeks(interval)`의 날짜에 `resetTime`을 적용한 `Instant`를 최초 경계로 사용합니다.
+- CUSTOM 최초 경계에는 하루 또는 일주일 이상의 최소 경과 시간을 보장하는 별도 보정을 적용하지 않습니다. 따라서 최초 경계까지의 실제 경과 시간은 하루 또는 일주일보다 짧을 수 있습니다.
+- 이후 경계는 각 유형의 최초 경계부터 동일한 달력 일·주 간격으로 계산합니다.
+- 기준은 `Instant`이며 정책 `timezone`의 현지 날짜·시각으로 계산한 뒤 다시 `Instant`로 변환합니다. 서버 로컬 시간이나 시스템 자정을 사용하지 않습니다.
+- DST로 존재하지 않는 현지 시각은 DST 간격만큼 앞으로 이동하고, 중복되는 현지 시각은 더 이른 오프셋의 첫 시각을 선택합니다. Java 시간 API 기본 동작에 의존한다면 이 동작을 테스트로 명시적으로 보장합니다.
+- 생성 시각 이전의 경계를 최초 경계로 선택하지 않습니다. 최초 경계는 생성 시각 이후 또는 생성 시각과 동일한 첫 적합 경계여야 합니다.
+- 달력상의 일·주 간격을 고정된 초 단위 간격으로 대체하지 않습니다.
+
+#### ResetPolicy 변경, 트랜잭션 및 동시성 기준
+
+- 정책 이름 변경은 허용합니다.
+- 사용 중인 정책의 `resetType`, `resetTime`, `timezone`, `weekStartDay`, `interval`, `intervalUnit` 변경은 금지합니다. 새 정책 생성 및 Quest 재할당을 사용합니다.
+- 비활성 정책은 신규 할당 대상으로 사용할 수 없습니다.
+- 활성 Quest가 참조하는 정책을 비활성화하려면 다른 활성 정책으로 재할당하거나 Quest를 비활성화하는 등의 선행 조건을 검증해야 합니다. Quest 미구현 상태에서는 이 조건을 구현하지 않습니다.
+- 변경 작업은 짧은 `@Transactional` 경계에서 처리하고, 트랜잭션 안에서 사용자 확인을 기다리지 않습니다.
+- 향후 재할당에서는 정책 참조 변경, 필요한 Quest 상태 초기화, Quest별 처리 경계 기록을 하나의 원자적 변경으로 처리해야 합니다. 사용자가 취소하면 기존 참조와 상태를 유지합니다.
+- MVP는 단일 사용자 로컬 데스크톱 앱을 전제로 하며, 분산 락 등 별도 인프라를 추가하지 않습니다.
+- `@Transactional`만으로 모든 중복 갱신이 방지된다고 가정하지 않습니다. 향후 Quest별 처리 상태를 저장할 때 필요한 경우 조건부 업데이트, 적절한 제약 조건 또는 SQLite 쓰기 잠금을 검토합니다.
+- 개발 설정 `src/main/resources/application.yml`과 테스트 설정 `src/test/resources/application.yml`에는 현재 `WAL`, `synchronous=NORMAL`, `busy_timeout=5000`이 실제로 적용되어 있습니다. 이 설정을 문서의 전제로 유지하되, 설정 변경 시 실제 파일과 테스트를 함께 확인합니다.
 
 ### 4.4 FocusSession
 
@@ -251,7 +346,7 @@ CalendarEvent는 **Quest 수행을 보조하는 일정/이벤트 관리 기능**
 
 주요 정보:
 
-- id
+- calendarEventId
 - userId
 - title
 - description
@@ -598,34 +693,34 @@ public record FieldViolation(
 ```text
 GET    /api/quests
 POST   /api/quests
-GET    /api/quests/{id}
-PATCH  /api/quests/{id}
-DELETE /api/quests/{id}
+GET    /api/quests/{questId}
+PATCH  /api/quests/{questId}
+DELETE /api/quests/{questId}
 
 GET    /api/reset-policies
 POST   /api/reset-policies
-PATCH  /api/reset-policies/{id}
+PATCH  /api/reset-policies/{resetPolicyId}
 
 GET    /api/today
 POST   /api/quests/{questId}/start
-POST   /api/executions/{id}/complete
-POST   /api/executions/{id}/skip
+POST   /api/executions/{questExecutionId}/complete
+POST   /api/executions/{questExecutionId}/skip
 POST   /api/quests/{questId}/focus/start
-POST   /api/focus/{sessionId}/stop
+POST   /api/focus/{focusSessionId}/stop
 
 GET    /api/achievements
 GET    /api/achievements/unlocked
-PATCH  /api/achievements/{id}/equip
+PATCH  /api/achievements/{achievementId}/equip
 
 GET    /api/statistics/today
 GET    /api/statistics/week
 GET    /api/statistics/month
 
 GET    /api/calendar/events
-GET    /api/calendar/events/{id}
+GET    /api/calendar/events/{calendarEventId}
 POST   /api/calendar/events
-PATCH  /api/calendar/events/{id}
-DELETE /api/calendar/events/{id}
+PATCH  /api/calendar/events/{calendarEventId}
+DELETE /api/calendar/events/{calendarEventId}
 GET    /api/calendar/upcoming
 GET    /api/calendar/date/{date}
 ```
@@ -653,6 +748,8 @@ Quick Todo API는 실제 구현 계약이 정해지는 시점에 동일한 `/api
 - ResetPolicy의 timezone을 기준으로 기간을 계산합니다.
 - 서버 로컬 시간에 암묵적으로 의존하지 않습니다.
 - `LocalDateTime`만으로 timezone이 필요한 비즈니스 규칙을 표현하지 않습니다.
+- 정책의 기준 시각과 경계 계산 입력은 `Instant`를 사용하고, 정책의 현지 시각 필드는 `LocalTime`, 주 시작 요일은 `DayOfWeek`를 우선 사용합니다.
+- 현재 엔티티의 `timezone` 저장 타입은 `String`이므로 저장 타입을 임의로 변경하지 않으며, 유효성은 `ZoneId.of(...)`로 검증합니다.
 - 외부 API/DB/클라이언트 경계에서 시간 타입을 명확히 정의합니다.
 - `periodStart`, `periodEnd`, `startAt`, `endAt`, `reminderAt`의 의미와 timezone을 혼동하지 않습니다.
 - 날짜 기반 조회는 사용자가 보는 기준 날짜와 ResetPolicy 기준 날짜가 다른 경우를 고려합니다.
@@ -701,7 +798,21 @@ Quick Todo API는 실제 구현 계약이 정해지는 시점에 동일한 `/api
 특히 다음은 테스트 우선순위가 높습니다.
 
 - Quest/Execution 분리
+- ResetPolicy 필드 검증 및 `resetType`별 입력 검증
+- `DAILY`, `WEEKLY`, `CUSTOM`의 필드 조합 검증
+- `CUSTOM`의 `interval >= 1` 및 `intervalUnit` 검증
+- `DAILY`/`WEEKLY` 요청의 CUSTOM 전용 필드 거부
+- `WEEKLY` 및 `CUSTOM + WEEK`의 `weekStartDay` 필수 검증
 - Reset 기간 계산
+- `CUSTOM + DAY`의 달력상 날짜 간격 계산
+- `CUSTOM + WEEK`의 `weekStartDay` 정렬 및 달력상 주 간격 계산
+- `CUSTOM + DAY`의 월요일 02:00/23:00 생성, `interval=1/3`, `resetTime=05:00`에 대한 화요일/목요일 최초 경계
+- `CUSTOM + WEEK`의 일요일 생성과 주 시작일 이후 생성, `interval=1` 및 `interval > 1`의 주 시작일 정렬
+- 동일한 생성 `Instant`를 서로 다른 `timezone`에 적용했을 때 현지 날짜에 따라 달라지는 최초 경계
+- 기본 `resetTime = 00:00` 및 생성 시각과 첫 경계의 관계
+- 유효한 `ZoneId`와 timezone별 계산
+- DST의 존재하지 않는 현지 시각 및 중복 현지 시각 처리
+- 연속된 경계 계산과 경계값
 - Reset에 따른 Execution 생성
 - CHECK Quest 완료
 - TIME_BASED 80% 규칙
@@ -715,6 +826,23 @@ Quick Todo API는 실제 구현 계약이 정해지는 시점에 동일한 `/api
 - 중복 완료 요청에 대한 이중 보상 방지
 - CalendarEvent CRUD 및 날짜/기간 조회
 - Quick Todo가 EXP/Streak에 영향을 주지 않는지
+
+ResetPolicy 계산 테스트는 시스템 시계나 서버 로컬 시간에 의존하지 않는
+고정 `Instant` 입력을 사용합니다. Java 시간 API의 DST 기본 동작을 사용할
+경우에도 존재하지 않는 시각은 앞으로 이동하고 중복 시각은 더 이른 오프셋을
+선택한다는 계약을 테스트로 명시합니다. 현지 날짜·시각과 최종 `Instant`를
+구분하고, 날짜·주 간격이 고정된 24시간·168시간 덧셈으로 대체되지 않았는지도
+검증합니다.
+
+Quest 도메인이 구현되지 않은 현재 단계에서는 다음을 완료 조건으로 요구하지
+않습니다.
+
+- Quest 상태 초기화 통합 테스트
+- Quest와 ResetPolicy 정책 재할당 통합 테스트
+- 앱 재시작 후 Quest 상태 복구 통합 테스트
+- Quest별 `lastProcessedResetAt` 저장·갱신 테스트
+
+위 항목은 Quest 도메인 구현 이후 별도 이슈와 테스트 범위로 진행합니다.
 
 코드 변경 후 최소한 관련 테스트를 실행하고, 가능하면 다음을 확인합니다.
 
