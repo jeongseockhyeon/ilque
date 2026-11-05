@@ -157,27 +157,27 @@ public class Quest extends Base {
             Integer targetCount,
             Integer targetTimeMinutes,
             Category category,
-            ResetPolicy resetPolicy,
-            User user
+            ResetPolicy resetPolicy
     ) {
         String normalizedTitle = normalizeTitle(title);
         String normalizedDescription = normalizeDescription(description);
         Set<DayOfWeek> copiedDays = copyDays(customDays);
         Difficulty requiredDifficulty = requireDifficulty(difficulty);
-        validateState(questType, recurrenceType, copiedDays, requiredDifficulty,
-                targetCount, targetTimeMinutes, resetPolicy,user);
+        validateState(normalizedTitle, normalizedDescription, questType, recurrenceType,
+                copiedDays, requiredDifficulty, targetCount, targetTimeMinutes, resetPolicy, this.user);
 
         this.title = normalizedTitle;
         this.description = normalizedDescription;
         this.questType = questType;
         this.recurrenceType = recurrenceType;
-        this.customDays = copiedDays;
         this.difficulty = requiredDifficulty;
         this.targetCount = targetCount;
         this.targetTimeMinutes = targetTimeMinutes;
         this.category = category;
         this.resetPolicy = resetPolicy;
-        validateState();
+
+        this.customDays.clear();
+        this.customDays.addAll(copiedDays);
     }
 
     public void activate() {
@@ -195,11 +195,13 @@ public class Quest extends Base {
     }
 
     private void validateState() {
-        validateState(questType, recurrenceType, customDays, difficulty,
-                targetCount, targetTimeMinutes, resetPolicy,user);
+        validateState(title, description, questType, recurrenceType, customDays, difficulty,
+                targetCount, targetTimeMinutes, resetPolicy, user);
     }
 
     private static void validateState(
+            String title,
+            String description,
             QuestType questType,
             RecurrenceType recurrenceType,
             Set<DayOfWeek> customDays,
@@ -209,8 +211,11 @@ public class Quest extends Base {
             ResetPolicy resetPolicy,
             User user
     ) {
-        if (user  == null) {
-           throw new BadRequestException("user는 필수입니다.");
+        validateNormalizedTitle(title);
+        validateNormalizedDescription(description);
+
+        if (user == null) {
+            throw new BadRequestException("user는 필수입니다.");
         }
         if (questType == null) {
             throw new BadRequestException("questType은 필수입니다.");
@@ -255,7 +260,13 @@ public class Quest extends Base {
     }
 
     private static Set<DayOfWeek> copyDays(Set<DayOfWeek> days) {
-        return days == null ? new HashSet<>() : new HashSet<>(days);
+        if (days == null) {
+            return new HashSet<>();
+        }
+        if (days.contains(null)) {
+            throw new BadRequestException("customDays에 null 요소를 포함할 수 없습니다.");
+        }
+        return new HashSet<>(days);
     }
 
     private static Difficulty requireDifficulty(Difficulty difficulty) {
@@ -267,13 +278,20 @@ public class Quest extends Base {
 
     private static String normalizeTitle(String title) {
         String normalized = title == null ? null : title.trim();
-        if (normalized == null || normalized.isEmpty()) {
+        validateNormalizedTitle(normalized);
+        return normalized;
+    }
+
+    private static void validateNormalizedTitle(String title) {
+        if (title == null || title.isBlank()) {
             throw new BadRequestException("title은 필수이며 공백일 수 없습니다.");
         }
-        if (normalized.length() > 100) {
+        if (!title.equals(title.trim())) {
+            throw new BadRequestException("title 앞뒤 공백은 허용되지 않습니다.");
+        }
+        if (title.length() > 100) {
             throw new BadRequestException("title은 100자 이하여야 합니다.");
         }
-        return normalized;
     }
 
     private static String normalizeDescription(String description) {
@@ -281,13 +299,19 @@ public class Quest extends Base {
             return null;
         }
         String normalized = description.trim();
-        if (normalized.isEmpty()) {
-            return null;
+        if (normalized.isEmpty()) return null;
+        validateNormalizedDescription(normalized);
+        return normalized;
+    }
+
+    private static void validateNormalizedDescription(String description) {
+        if (description == null) return;
+        if (!description.equals(description.trim())) {
+            throw new BadRequestException("description 앞뒤 공백은 허용되지 않습니다.");
         }
-        if (normalized.length() > 1000) {
+        if (description.length() > 1000) {
             throw new BadRequestException("description은 1,000자 이하여야 합니다.");
         }
-        return normalized;
     }
 
     private static void requirePositive(Integer value, String fieldName) {
