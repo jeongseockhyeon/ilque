@@ -1,6 +1,6 @@
 package com.ilque.domain.quest.entity;
 
-import com.ilque.domain.categroy.entity.Category;
+import com.ilque.domain.category.entity.Category;
 import com.ilque.domain.resetpolicy.entity.ResetPolicy;
 import com.ilque.domain.user.entity.User;
 import com.ilque.global.base.Base;
@@ -157,14 +157,15 @@ public class Quest extends Base {
             Integer targetCount,
             Integer targetTimeMinutes,
             Category category,
-            ResetPolicy resetPolicy
+            ResetPolicy resetPolicy,
+            User user
     ) {
         String normalizedTitle = normalizeTitle(title);
         String normalizedDescription = normalizeDescription(description);
         Set<DayOfWeek> copiedDays = copyDays(customDays);
         Difficulty requiredDifficulty = requireDifficulty(difficulty);
         validateState(questType, recurrenceType, copiedDays, requiredDifficulty,
-                targetCount, targetTimeMinutes, resetPolicy);
+                targetCount, targetTimeMinutes, resetPolicy,user);
 
         this.title = normalizedTitle;
         this.description = normalizedDescription;
@@ -195,7 +196,7 @@ public class Quest extends Base {
 
     private void validateState() {
         validateState(questType, recurrenceType, customDays, difficulty,
-                targetCount, targetTimeMinutes, resetPolicy);
+                targetCount, targetTimeMinutes, resetPolicy,user);
     }
 
     private static void validateState(
@@ -205,8 +206,12 @@ public class Quest extends Base {
             Difficulty difficulty,
             Integer targetCount,
             Integer targetTimeMinutes,
-            ResetPolicy resetPolicy
+            ResetPolicy resetPolicy,
+            User user
     ) {
+        if (user  == null) {
+           throw new BadRequestException("user는 필수입니다.");
+        }
         if (questType == null) {
             throw new BadRequestException("questType은 필수입니다.");
         }
