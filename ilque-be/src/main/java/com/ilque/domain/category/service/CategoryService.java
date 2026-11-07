@@ -4,6 +4,7 @@ import com.ilque.domain.category.dto.CategoryRequest;
 import com.ilque.domain.category.entity.Category;
 import com.ilque.domain.category.repository.CategoryRepository;
 import com.ilque.global.error.BadRequestException;
+import com.ilque.global.error.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,11 +16,18 @@ public class CategoryService {
 
     private final CategoryRepository repository;
 
+    public Category findById(Long id){
+        return repository.findById(id)
+                .orElseThrow(ResourceNotFoundException::new);
+    }
+
     @Transactional
     public Category create(CategoryRequest request){
         validate(request);
         return repository.save(toEntity(request));
     }
+
+
 
     private Category toEntity(CategoryRequest request){
         return Category.builder()
