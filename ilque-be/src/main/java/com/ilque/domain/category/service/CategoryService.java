@@ -1,4 +1,4 @@
-package com.ilque.domain.category.serveice;
+package com.ilque.domain.category.service;
 
 import com.ilque.domain.category.dto.CategoryRequest;
 import com.ilque.domain.category.entity.Category;

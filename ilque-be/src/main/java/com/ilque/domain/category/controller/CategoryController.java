@@ -3,7 +3,7 @@ package com.ilque.domain.category.controller;
 import com.ilque.domain.category.dto.CategoryRequest;
 import com.ilque.domain.category.dto.CategoryResponse;
 
-import com.ilque.domain.category.serveice.CategoryService;
+import com.ilque.domain.category.service.CategoryService;
 import com.ilque.global.response.ApiResponseEnvelope;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
