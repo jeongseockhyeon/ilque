@@ -25,6 +25,7 @@ public class Category extends Base {
     @Column
     private String description;
 
-    @Column
-    private Boolean active;
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean active = true;
 }
