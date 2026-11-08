@@ -28,4 +28,16 @@ public class Category extends Base {
     @Column(nullable = false)
     @Builder.Default
     private Boolean active = true;
+
+    public void update(
+            String name,
+            String description,
+            Boolean active
+    ){
+        this.name = name;
+        this.description = description;
+        this.active = active;
+    }
+
+
 }
