@@ -39,5 +39,7 @@ public class Category extends Base {
         this.active = active;
     }
 
-
+    public void softDelete(){
+        this.active = false;
+    }
 }

@@ -43,6 +43,14 @@ public class CategoryService {
         return current;
     }
 
+    @Transactional
+    public Category softDelete(Long id){
+        Category current = findById(id);
+        current.softDelete();
+        return current;
+    }
+
+
     private Category toEntity(CategoryRequest request){
         return Category.builder()
                 .name(request.getName())

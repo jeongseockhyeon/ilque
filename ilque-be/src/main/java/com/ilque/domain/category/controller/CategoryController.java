@@ -22,13 +22,20 @@ public class CategoryController {
     public ApiResponseEnvelope<CategoryResponse> findById(@PathVariable Long categoryId){
         return ApiResponseEnvelope.success(CategoryResponse.from(service.findById(categoryId)));
     }
+
     @GetMapping
     public ApiResponseEnvelope<List<CategoryResponse>> findAll(){
         return ApiResponseEnvelope.success(service.findAll().stream().map(CategoryResponse::from).toList());
     }
+
     @PostMapping
     public ResponseEntity<ApiResponseEnvelope<CategoryResponse>> create(@Valid @RequestBody CategoryRequest request){
         return ResponseEntity.ok(ApiResponseEnvelope.success(CategoryResponse.from(service.create(request))));
+    }
+
+    @DeleteMapping("/{categoryId}")
+    public ApiResponseEnvelope<CategoryResponse> softDelete(@PathVariable Long categoryId){
+        return ApiResponseEnvelope.success(CategoryResponse.from(service.softDelete(categoryId)));
     }
 
     @PatchMapping("/{categoryId}")
