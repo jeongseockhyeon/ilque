@@ -4,6 +4,7 @@ import com.ilque.domain.category.entity.Category;
 import com.ilque.domain.category.repository.CategoryRepository;
 import com.ilque.domain.quest.dto.QuestRequest;
 import com.ilque.domain.quest.dto.QuestResetPolicyRequest;
+import com.ilque.domain.quest.dto.QuestResponse;
 import com.ilque.domain.quest.entity.Quest;
 import com.ilque.domain.quest.entity.RecurrenceType;
 import com.ilque.domain.quest.repository.QuestRepository;
@@ -28,6 +29,15 @@ public class QuestService {
     private final ResetPolicyRepository resetPolicyRepository;
     private final UserService userService;
 
+    public Quest findById(Long id){
+        return questRepository.findById(id)
+                .orElseThrow(ResourceNotFoundException::new);
+    }
+
+    public QuestResponse findResponseById(Long id) {
+        return QuestResponse.from(findById(id));
+    }
+
     @Transactional
     public Quest create(QuestRequest request) {
         if (request == null) throw new BadRequestException("요청 본문은 필수입니다.");
@@ -41,6 +51,11 @@ public class QuestService {
                 request.recurrenceType(), request.customDays(), request.difficulty(), request.targetCount(),
                 request.targetTimeMinutes(), category, resetPolicy, userService.initializeLocalUser());
         return questRepository.save(quest);
+    }
+
+    @Transactional
+    public QuestResponse createResponse(QuestRequest request) {
+        return QuestResponse.from(create(request));
     }
 
     private ResetPolicy resolveResetPolicy(QuestRequest request) {

@@ -7,10 +7,7 @@ import com.ilque.global.response.ApiResponseEnvelope;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/quests")
@@ -18,8 +15,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class QuestController {
     private final QuestService questService;
 
+    @GetMapping("/{questId}")
+    public ApiResponseEnvelope<QuestResponse> findById(@PathVariable Long questId){
+        return ApiResponseEnvelope.success(questService.findResponseById(questId));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponseEnvelope<QuestResponse>> create(@Valid @RequestBody QuestRequest request) {
-        return ResponseEntity.ok(ApiResponseEnvelope.success(QuestResponse.from(questService.create(request))));
+        return ResponseEntity.ok(ApiResponseEnvelope.success(questService.createResponse(request)));
     }
 }
