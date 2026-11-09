@@ -16,7 +16,7 @@ public record QuestRequest(
         @NotNull QuestType questType,
         @NotNull RecurrenceType recurrenceType,
         @NotNull Difficulty difficulty,
-        @NotNull Long categoryId, Long resetPolicyId,
+        Long categoryId, Long resetPolicyId,
         @Valid QuestResetPolicyRequest resetPolicy,
         Set<DayOfWeek> customDays,
         Integer targetCount,
