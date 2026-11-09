@@ -34,11 +34,22 @@ public class CategoryService {
 
     @Transactional
     public Category patch(Long id, CategoryPatchRequest request){
+        if (request == null) {
+            throw new BadRequestException("요청 본문은 필수입니다.");
+        }
+
         Category current = findById(id);
+
+        String name = request.isNameProvided() ? request.getName() : current.getName();
+        String description = request.isDescriptionProvided() ? request.getDescription() : current.getDescription();
+        Boolean active = request.isActiveProvided() ? request.getActive() : current.getActive();
+
+        validatePatchedState(name, active);
+
         current.update(
-                request.getName(),
-                request.getDescription(),
-                request.getActive()
+                name,
+                description,
+                active
                 );
         return current;
     }
@@ -61,5 +72,15 @@ public class CategoryService {
     private void validate(CategoryRequest request){
         String name = request.getName();
         if (name == null || name.isBlank()) throw new BadRequestException("카테고리 이름은 필수입니다.");
+    }
+
+    private void validatePatchedState(String name, Boolean active){
+        if (name == null || name.isBlank()) {
+            throw new BadRequestException("카테고리 이름은 필수입니다.");
+        }
+
+        if (active == null) {
+            throw new BadRequestException("카테고리 활성 상태는 필수입니다.");
+        }
     }
 }
