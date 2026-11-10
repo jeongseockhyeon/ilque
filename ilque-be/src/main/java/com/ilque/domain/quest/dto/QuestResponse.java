@@ -22,6 +22,10 @@ public record QuestResponse(Long questId,
                             Integer expPerMinute,
                             Boolean active) {
     public static QuestResponse from(Quest quest) {
+        Set<DayOfWeek> customDays = quest.getCustomDays() == null
+                ? Set.of()
+                : Set.copyOf(quest.getCustomDays());
+
         return new QuestResponse(
                 quest.getQuestId(),
                 quest.getTitle(),
@@ -31,7 +35,7 @@ public record QuestResponse(Long questId,
                 quest.getDifficulty(),
                 quest.getCategory() == null ? null : quest.getCategory().getCategoryId(),
                 quest.getResetPolicy() == null ? null : quest.getResetPolicy().getResetPolicyId(),
-                quest.getCustomDays(),
+                customDays,
                 quest.getTargetCount(),
                 quest.getTargetTimeMinutes(),
                 quest.getBaseExp(),
