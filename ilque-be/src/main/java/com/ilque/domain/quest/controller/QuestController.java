@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/quests")
 @RequiredArgsConstructor
@@ -19,6 +21,11 @@ public class QuestController {
     @GetMapping("/{questId}")
     public ApiResponseEnvelope<QuestResponse> findById(@PathVariable Long questId){
         return ApiResponseEnvelope.success(questService.findResponseById(questId));
+    }
+
+    @GetMapping
+    public ApiResponseEnvelope<List<QuestResponse>> findAll(){
+        return ApiResponseEnvelope.success(questService.findAll());
     }
 
     @PostMapping

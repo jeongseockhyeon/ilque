@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalTime;
 import java.time.DayOfWeek;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -41,6 +42,10 @@ public class QuestService {
 
     public QuestResponse findResponseById(Long id) {
         return QuestResponse.from(findById(id));
+    }
+
+    public List<QuestResponse> findAll(){
+        return questRepository.findAll().stream().map(QuestResponse::from).toList();
     }
 
     @Transactional
