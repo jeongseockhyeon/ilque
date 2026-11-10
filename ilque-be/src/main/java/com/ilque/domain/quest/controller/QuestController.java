@@ -1,6 +1,7 @@
 package com.ilque.domain.quest.controller;
 
 import com.ilque.domain.quest.dto.QuestRequest;
+import com.ilque.domain.quest.dto.QuestPatchRequest;
 import com.ilque.domain.quest.dto.QuestResponse;
 import com.ilque.domain.quest.service.QuestService;
 import com.ilque.global.response.ApiResponseEnvelope;
@@ -23,5 +24,11 @@ public class QuestController {
     @PostMapping
     public ResponseEntity<ApiResponseEnvelope<QuestResponse>> create(@Valid @RequestBody QuestRequest request) {
         return ResponseEntity.ok(ApiResponseEnvelope.success(questService.createResponse(request)));
+    }
+
+    @PatchMapping("/{questId}")
+    public ApiResponseEnvelope<QuestResponse> patch(@PathVariable Long questId,
+                                                    @Valid @RequestBody QuestPatchRequest request) {
+        return ApiResponseEnvelope.success(questService.patchResponse(questId, request));
     }
 }

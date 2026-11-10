@@ -171,6 +171,8 @@ public class Quest extends Base {
         this.questType = questType;
         this.recurrenceType = recurrenceType;
         this.difficulty = requiredDifficulty;
+        this.baseExp = requiredDifficulty.getBaseExp();
+        this.expPerMinute = requiredDifficulty.getExpPerMinute();
         this.targetCount = targetCount;
         this.targetTimeMinutes = targetTimeMinutes;
         this.category = category;
