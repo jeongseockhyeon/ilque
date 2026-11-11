@@ -279,9 +279,8 @@ public class Quest extends Base {
     }
 
     private static String normalizeTitle(String title) {
-        String normalized = title == null ? null : title.trim();
-        validateNormalizedTitle(normalized);
-        return normalized;
+        validateNormalizedTitle(title);
+        return title;
     }
 
     private static void validateNormalizedTitle(String title) {
@@ -300,10 +299,9 @@ public class Quest extends Base {
         if (description == null) {
             return null;
         }
-        String normalized = description.trim();
-        if (normalized.isEmpty()) return null;
-        validateNormalizedDescription(normalized);
-        return normalized;
+        if (description.trim().isEmpty()) return null;
+        validateNormalizedDescription(description);
+        return description;
     }
 
     private static void validateNormalizedDescription(String description) {
