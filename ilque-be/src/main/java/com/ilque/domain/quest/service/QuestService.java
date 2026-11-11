@@ -77,7 +77,10 @@ public class QuestService {
     @Transactional
     public Quest create(QuestRequest request) {
         if (request == null) throw new BadRequestException("요청 본문은 필수입니다.");
-        Category category = request.categoryId() == null ? null : categoryRepository.findById(request.categoryId())
+        if (request.categoryId() == null) {
+            throw new BadRequestException("Category는 필수입니다.");
+        }
+        Category category = categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("해당 Category를 찾을 수 없습니다."));
         if (category != null && Boolean.FALSE.equals(category.getActive())) {
             throw new BadRequestException("비활성 Category는 Quest에 사용할 수 없습니다.");
@@ -139,7 +142,7 @@ public class QuestService {
             return quest.getCategory();
         }
         if (request.getCategoryId() == null) {
-            return null;
+            throw new BadRequestException("Category는 null일 수 없습니다.");
         }
 
         Category category = categoryRepository.findById(request.getCategoryId())

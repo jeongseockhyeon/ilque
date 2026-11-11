@@ -4,6 +4,7 @@ import com.ilque.domain.category.dto.CategoryPatchRequest;
 import com.ilque.domain.category.dto.CategoryRequest;
 import com.ilque.domain.category.entity.Category;
 import com.ilque.domain.category.repository.CategoryRepository;
+import com.ilque.domain.quest.repository.QuestRepository;
 import com.ilque.global.error.BadRequestException;
 import com.ilque.global.error.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.List;
 public class CategoryService {
 
     private final CategoryRepository repository;
+    private final QuestRepository questRepository;
 
     public Category findById(Long id){
         return repository.findById(id)
@@ -45,6 +47,7 @@ public class CategoryService {
         Boolean active = request.isActiveProvided() ? request.getActive() : current.getActive();
 
         validatePatchedState(name, active);
+        validateDeactivation(current, active);
 
         current.update(
                 name,
@@ -57,8 +60,17 @@ public class CategoryService {
     @Transactional
     public Category softDelete(Long id){
         Category current = findById(id);
+        validateDeactivation(current, false);
         current.softDelete();
         return current;
+    }
+
+    private void validateDeactivation(Category category, Boolean active) {
+        if (Boolean.FALSE.equals(active)
+                && Boolean.TRUE.equals(category.getActive())
+                && questRepository.existsByCategory_CategoryIdAndActiveTrue(category.getCategoryId())) {
+            throw new BadRequestException("활성 Quest가 사용 중인 Category는 비활성화할 수 없습니다.");
+        }
     }
 
 

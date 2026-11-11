@@ -19,4 +19,6 @@ public interface QuestRepository extends JpaRepository<Quest, Long> {
     boolean existsByResetPolicy_ResetPolicyId(Long resetPolicyId);
 
     boolean existsByResetPolicy_ResetPolicyIdAndActiveTrue(Long resetPolicyId);
+
+    boolean existsByCategory_CategoryIdAndActiveTrue(Long categoryId);
 }
