@@ -250,8 +250,8 @@ public class QuestService {
             throw new BadRequestException(ex.getMessage());
         }
         return resetPolicyRepository
-                .findFirstByResetTypeAndResetTimeAndTimezoneAndWeekStartDayAndIntervalAndIntervalUnitAndActiveTrue(
-                        request.getResetType(), resetTime, request.getTimezone(), request.getWeekStartDay(),
+                .findFirstByNameAndResetTypeAndResetTimeAndTimezoneAndWeekStartDayAndIntervalAndIntervalUnitAndActiveTrue(
+                        request.getName(), request.getResetType(), resetTime, request.getTimezone(), request.getWeekStartDay(),
                         request.getInterval(), request.getIntervalUnit())
                 .orElseGet(() -> resetPolicyRepository.save(ResetPolicy.builder()
                         .name(request.getName()).resetType(request.getResetType()).resetTime(resetTime)
