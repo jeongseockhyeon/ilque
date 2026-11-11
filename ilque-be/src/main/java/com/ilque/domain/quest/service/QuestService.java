@@ -101,13 +101,20 @@ public class QuestService {
     public QuestResponse patchResponse(Long id, QuestPatchRequest request) {
         if (request == null) throw new BadRequestException("요청 본문은 필수입니다.");
 
-        Quest quest = findById(id);
+        Quest quest = questRepository.findByQuestId(id)
+                .orElseThrow(ResourceNotFoundException::new);
+        if (request.isActiveProvided() && request.getActive() == null) {
+            throw new BadRequestException("active는 null일 수 없습니다.");
+        }
+        boolean targetActive = request.isActiveProvided()
+                ? request.getActive()
+                : Boolean.TRUE.equals(quest.getActive());
         QuestType questType = request.isQuestTypeProvided() ? request.getQuestType() : quest.getQuestType();
         RecurrenceType recurrenceType = request.isRecurrenceTypeProvided()
                 ? request.getRecurrenceType()
                 : quest.getRecurrenceType();
-        Category category = resolveCategory(quest, request);
-        ResetPolicy resetPolicy = resolvePatchResetPolicy(quest, request, recurrenceType);
+        Category category = resolveCategory(quest, request, targetActive);
+        ResetPolicy resetPolicy = resolvePatchResetPolicy(quest, request, recurrenceType, targetActive);
 
         String title = request.isTitleProvided() ? request.getTitle() : quest.getTitle();
         String description = request.isDescriptionProvided() ? request.getDescription() : quest.getDescription();
@@ -124,9 +131,6 @@ public class QuestService {
                 targetCount, targetTimeMinutes, category, resetPolicy);
 
         if (request.isActiveProvided()) {
-            if (request.getActive() == null) {
-                throw new BadRequestException("active는 null일 수 없습니다.");
-            }
             if (request.getActive()) {
                 quest.activate();
             } else {
@@ -137,9 +141,13 @@ public class QuestService {
         return QuestResponse.from(quest);
     }
 
-    private Category resolveCategory(Quest quest, QuestPatchRequest request) {
+    private Category resolveCategory(Quest quest, QuestPatchRequest request, boolean targetActive) {
         if (!request.isCategoryIdProvided()) {
-            return quest.getCategory();
+            Category current = quest.getCategory();
+            if (targetActive && (current == null || !Boolean.TRUE.equals(current.getActive()))) {
+                throw new BadRequestException("활성 Quest에는 활성 Category가 필요합니다.");
+            }
+            return current;
         }
         if (request.getCategoryId() == null) {
             throw new BadRequestException("Category는 null일 수 없습니다.");
@@ -147,7 +155,7 @@ public class QuestService {
 
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("해당 Category를 찾을 수 없습니다."));
-        if (Boolean.FALSE.equals(category.getActive())) {
+        if (targetActive && Boolean.FALSE.equals(category.getActive())) {
             throw new BadRequestException("비활성 Category는 Quest에 사용할 수 없습니다.");
         }
         return category;
@@ -156,7 +164,8 @@ public class QuestService {
     private ResetPolicy resolvePatchResetPolicy(
             Quest quest,
             QuestPatchRequest request,
-            RecurrenceType recurrenceType
+            RecurrenceType recurrenceType,
+            boolean targetActive
     ) {
         if (recurrenceType == RecurrenceType.ONCE) {
             if (request.isResetPolicyIdProvided() && request.getResetPolicyId() != null) {
@@ -170,7 +179,7 @@ public class QuestService {
             if (current == null) {
                 throw new BadRequestException("반복 Quest에는 활성 ResetPolicy가 필요합니다.");
             }
-            if (!Boolean.TRUE.equals(current.getActive())) {
+            if (targetActive && !Boolean.TRUE.equals(current.getActive())) {
                 throw new BadRequestException("비활성 ResetPolicy는 Quest에 사용할 수 없습니다.");
             }
             return current;
@@ -182,7 +191,7 @@ public class QuestService {
 
         ResetPolicy policy = resetPolicyRepository.findById(request.getResetPolicyId())
                 .orElseThrow(() -> new ResourceNotFoundException("해당 ResetPolicy를 찾을 수 없습니다."));
-        if (!Boolean.TRUE.equals(policy.getActive())) {
+        if (targetActive && !Boolean.TRUE.equals(policy.getActive())) {
             throw new BadRequestException("비활성 ResetPolicy는 Quest에 사용할 수 없습니다.");
         }
         return policy;
