@@ -36,7 +36,7 @@ public class QuestService {
     private final UserService userService;
 
     public Quest findById(Long id){
-        return questRepository.findById(id)
+        return questRepository.findByQuestIdAndActiveTrue(id)
                 .orElseThrow(ResourceNotFoundException::new);
     }
 
@@ -45,7 +45,19 @@ public class QuestService {
     }
 
     public List<QuestResponse> findAll(){
-        return questRepository.findAll().stream().map(QuestResponse::from).toList();
+        return questRepository.findAllByActiveTrue().stream().map(QuestResponse::from).toList();
+    }
+
+    @Transactional
+    public QuestResponse softDelete(Long id) {
+        Quest quest = questRepository.findById(id)
+                .orElseThrow(ResourceNotFoundException::new);
+
+        if (Boolean.TRUE.equals(quest.getActive())) {
+            quest.deactivate();
+        }
+
+        return QuestResponse.from(quest);
     }
 
     @Transactional

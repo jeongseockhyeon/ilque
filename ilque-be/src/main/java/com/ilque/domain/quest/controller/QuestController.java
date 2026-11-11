@@ -38,4 +38,9 @@ public class QuestController {
                                                     @Valid @RequestBody QuestPatchRequest request) {
         return ApiResponseEnvelope.success(questService.patchResponse(questId, request));
     }
+
+    @DeleteMapping("/{questId}")
+    public ApiResponseEnvelope<QuestResponse> softDelete(@PathVariable Long questId) {
+        return ApiResponseEnvelope.success(questService.softDelete(questId));
+    }
 }
