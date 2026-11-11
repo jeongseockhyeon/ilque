@@ -1,6 +1,7 @@
 package com.ilque.domain.quest.repository;
 
 import com.ilque.domain.quest.entity.Quest;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -13,6 +14,9 @@ public interface QuestRepository extends JpaRepository<Quest, Long> {
     List<Quest> findAllByActiveFalse();
 
     Optional<Quest> findByQuestId(Long questId);
+
+    @EntityGraph(attributePaths = {"category", "resetPolicy"})
+    Optional<Quest> findDetailByQuestId(Long questId);
 
     Optional<Quest> findByQuestIdAndActiveTrue(Long questId);
 

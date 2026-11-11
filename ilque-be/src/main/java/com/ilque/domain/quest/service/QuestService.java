@@ -48,7 +48,7 @@ public class QuestService {
     }
 
     public QuestDetailResponse findDetailResponseById(Long id) {
-        return questRepository.findByQuestId(id)
+        return questRepository.findDetailByQuestId(id)
                 .map(QuestDetailResponse::from)
                 .orElseThrow(ResourceNotFoundException::new);
     }
