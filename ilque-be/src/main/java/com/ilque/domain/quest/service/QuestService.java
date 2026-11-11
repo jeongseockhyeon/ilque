@@ -6,6 +6,7 @@ import com.ilque.domain.quest.dto.QuestRequest;
 import com.ilque.domain.quest.dto.QuestPatchRequest;
 import com.ilque.domain.quest.dto.QuestResetPolicyRequest;
 import com.ilque.domain.quest.dto.QuestResponse;
+import com.ilque.domain.quest.dto.QuestDetailResponse;
 import com.ilque.domain.quest.entity.Quest;
 import com.ilque.domain.quest.entity.Difficulty;
 import com.ilque.domain.quest.entity.QuestType;
@@ -43,6 +44,12 @@ public class QuestService {
     public QuestResponse findResponseById(Long id) {
         return questRepository.findByQuestId(id)
                 .map(QuestResponse::from)
+                .orElseThrow(ResourceNotFoundException::new);
+    }
+
+    public QuestDetailResponse findDetailResponseById(Long id) {
+        return questRepository.findByQuestId(id)
+                .map(QuestDetailResponse::from)
                 .orElseThrow(ResourceNotFoundException::new);
     }
 

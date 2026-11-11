@@ -3,6 +3,7 @@ package com.ilque.domain.quest.controller;
 import com.ilque.domain.quest.dto.QuestRequest;
 import com.ilque.domain.quest.dto.QuestPatchRequest;
 import com.ilque.domain.quest.dto.QuestResponse;
+import com.ilque.domain.quest.dto.QuestDetailResponse;
 import com.ilque.domain.quest.service.QuestService;
 import com.ilque.global.response.ApiResponseEnvelope;
 import jakarta.validation.Valid;
@@ -19,8 +20,8 @@ public class QuestController {
     private final QuestService questService;
 
     @GetMapping("/{questId}")
-    public ApiResponseEnvelope<QuestResponse> findById(@PathVariable Long questId){
-        return ApiResponseEnvelope.success(questService.findResponseById(questId));
+    public ApiResponseEnvelope<QuestDetailResponse> findById(@PathVariable Long questId){
+        return ApiResponseEnvelope.success(questService.findDetailResponseById(questId));
     }
 
     @GetMapping
