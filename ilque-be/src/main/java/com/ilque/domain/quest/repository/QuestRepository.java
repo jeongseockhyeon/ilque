@@ -10,6 +10,8 @@ public interface QuestRepository extends JpaRepository<Quest, Long> {
 
     List<Quest> findAllByActiveTrue();
 
+    List<Quest> findAllByActiveFalse();
+
     Optional<Quest> findByQuestId(Long questId);
 
     Optional<Quest> findByQuestIdAndActiveTrue(Long questId);

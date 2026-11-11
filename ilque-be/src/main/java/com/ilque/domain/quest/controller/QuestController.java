@@ -28,6 +28,11 @@ public class QuestController {
         return ApiResponseEnvelope.success(questService.findAll());
     }
 
+    @GetMapping("/inactive")
+    public ApiResponseEnvelope<List<QuestResponse>> findAllInactive(){
+        return ApiResponseEnvelope.success(questService.findAllInactive());
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponseEnvelope<QuestResponse>> create(@Valid @RequestBody QuestRequest request) {
         return ResponseEntity.ok(ApiResponseEnvelope.success(questService.createResponse(request)));

@@ -50,6 +50,10 @@ public class QuestService {
         return questRepository.findAllByActiveTrue().stream().map(QuestResponse::from).toList();
     }
 
+    public List<QuestResponse> findAllInactive(){
+        return questRepository.findAllByActiveFalse().stream().map(QuestResponse::from).toList();
+    }
+
     @Transactional
     public QuestResponse softDelete(Long id) {
         Quest quest = questRepository.findById(id)
