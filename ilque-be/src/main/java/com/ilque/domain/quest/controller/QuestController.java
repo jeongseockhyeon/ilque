@@ -43,4 +43,10 @@ public class QuestController {
     public ApiResponseEnvelope<QuestResponse> softDelete(@PathVariable Long questId) {
         return ApiResponseEnvelope.success(questService.softDelete(questId));
     }
+
+    @DeleteMapping("/{questId}/hard")
+    public ApiResponseEnvelope<Void> hardDelete(@PathVariable Long questId) {
+        questService.hardDelete(questId);
+        return ApiResponseEnvelope.success(null);
+    }
 }

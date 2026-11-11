@@ -61,6 +61,14 @@ public class QuestService {
     }
 
     @Transactional
+    public void hardDelete(Long id) {
+        Quest quest = questRepository.findById(id)
+                .orElseThrow(ResourceNotFoundException::new);
+
+        questRepository.delete(quest);
+    }
+
+    @Transactional
     public Quest create(QuestRequest request) {
         if (request == null) throw new BadRequestException("요청 본문은 필수입니다.");
         Category category = request.categoryId() == null ? null : categoryRepository.findById(request.categoryId())
