@@ -36,7 +36,7 @@ public class QuestService {
     private final ResetPolicyRepository resetPolicyRepository;
     private final UserService userService;
 
-    public Quest findById(Long id){
+    public Quest findActiveById(Long id){
         return questRepository.findByQuestIdAndActiveTrue(id)
                 .orElseThrow(ResourceNotFoundException::new);
     }
