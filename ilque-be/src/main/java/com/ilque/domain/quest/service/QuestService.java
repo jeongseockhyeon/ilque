@@ -41,7 +41,9 @@ public class QuestService {
     }
 
     public QuestResponse findResponseById(Long id) {
-        return QuestResponse.from(findById(id));
+        return questRepository.findByQuestId(id)
+                .map(QuestResponse::from)
+                .orElseThrow(ResourceNotFoundException::new);
     }
 
     public List<QuestResponse> findAll(){
