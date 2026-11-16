@@ -25,7 +25,13 @@ import java.time.Instant;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "quest_execution")
+@Table(
+        name = "quest_execution",
+        uniqueConstraints = @jakarta.persistence.UniqueConstraint(
+                name = "uk_quest_execution_quest_period_start",
+                columnNames = {"quest_id", "period_start"}
+        )
+)
 public class QuestExecution extends Base {
 
     @Id
