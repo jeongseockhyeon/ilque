@@ -12,6 +12,9 @@ import java.time.ZoneId;
 
 public class ResetBoundaryCalculator {
 
+    public record PeriodBoundary(Instant start, Instant end) {
+    }
+
     public Instant calculateFirstBoundary(Instant creationInstant, ResetPolicy policy) {
         if (creationInstant == null || policy == null) {
             throw new IllegalArgumentException("생성 시각과 정책은 필수입니다.");
@@ -78,6 +81,45 @@ public class ResetBoundaryCalculator {
                 .intervalUnit(intervalUnit)
                 .build();
         return calculateFirstBoundary(creationInstant, policy);
+    }
+
+    public PeriodBoundary calculateCurrentPeriod(Instant creationInstant, Instant referenceInstant,
+                                                 ResetPolicy policy) {
+        if (creationInstant == null || referenceInstant == null || policy == null) {
+            throw new IllegalArgumentException("생성 시각, 기준 시각과 정책은 필수입니다.");
+        }
+        if (referenceInstant.isBefore(creationInstant)) {
+            throw new IllegalArgumentException("기준 시각은 생성 시각보다 이전일 수 없습니다.");
+        }
+
+        ZoneId zoneId = ZoneId.of(policy.getTimezone());
+        LocalDate referenceDate = referenceInstant.atZone(zoneId).toLocalDate();
+        LocalDate startDate;
+        LocalDate endDate;
+
+        if (policy.getResetType() == ResetType.DAILY) {
+            Instant candidate = atZone(referenceDate, zoneId, policy);
+            startDate = candidate.isAfter(referenceInstant)
+                    ? referenceDate.minusDays(1)
+                    : referenceDate;
+            endDate = startDate.plusDays(1);
+        } else if (policy.getResetType() == ResetType.WEEKLY) {
+            LocalDate weekStart = startOfWeek(referenceDate, policy.getWeekStartDay());
+            Instant candidate = atZone(weekStart, zoneId, policy);
+            startDate = candidate.isAfter(referenceInstant)
+                    ? weekStart.minusWeeks(1)
+                    : weekStart;
+            endDate = startDate.plusWeeks(1);
+        } else {
+            throw new IllegalArgumentException("QuestExecution에서는 CUSTOM ResetPolicy를 사용할 수 없습니다.");
+        }
+
+        Instant periodStart = atZone(startDate, zoneId, policy);
+        if (periodStart.isBefore(creationInstant)) {
+            periodStart = creationInstant;
+        }
+        Instant periodEnd = atZone(endDate, zoneId, policy);
+        return new PeriodBoundary(periodStart, periodEnd);
     }
 
     private LocalDate startOfWeek(LocalDate date, DayOfWeek weekStartDay) {
