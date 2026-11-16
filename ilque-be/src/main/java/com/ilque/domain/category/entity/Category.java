@@ -1,4 +1,4 @@
-package com.ilque.domain.categroy.entity;
+package com.ilque.domain.category.entity;
 
 import com.ilque.global.base.Base;
 import jakarta.persistence.*;
@@ -25,6 +25,21 @@ public class Category extends Base {
     @Column
     private String description;
 
-    @Column
-    private Boolean active;
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean active = true;
+
+    public void update(
+            String name,
+            String description,
+            Boolean active
+    ){
+        this.name = name;
+        this.description = description;
+        this.active = active;
+    }
+
+    public void softDelete(){
+        this.active = false;
+    }
 }

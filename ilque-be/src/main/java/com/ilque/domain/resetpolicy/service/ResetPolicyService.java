@@ -6,6 +6,7 @@ import com.ilque.domain.resetpolicy.entity.IntervalUnit;
 import com.ilque.domain.resetpolicy.entity.ResetPolicy;
 import com.ilque.domain.resetpolicy.entity.ResetPolicyValidator;
 import com.ilque.domain.resetpolicy.entity.ResetType;
+import com.ilque.domain.quest.repository.QuestRepository;
 import com.ilque.domain.resetpolicy.repository.ResetPolicyRepository;
 import com.ilque.global.error.BadRequestException;
 import com.ilque.global.error.ResourceNotFoundException;
@@ -14,12 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ResetPolicyService {
     private final ResetPolicyRepository repository;
+    private final QuestRepository questRepository;
     public List<ResetPolicy> findAll() { return repository.findAll(); }
     public ResetPolicy findById(Long id) { return repository.findById(id).orElseThrow(ResourceNotFoundException::new); }
 
@@ -33,6 +36,8 @@ public class ResetPolicyService {
     public ResetPolicy update(Long id, ResetPolicyRequest request) {
         validate(request);
         ResetPolicy current = findById(id);
+        validateQuestReferences(current, request.getResetType(), request.getResetTime(), request.getTimezone(),
+                request.getWeekStartDay(), request.getActive(), request.getInterval(), request.getIntervalUnit());
         current.update(request.getName(), request.getResetType(), request.getResetTime(), request.getTimezone(),
                 request.getWeekStartDay(), request.getActive(), request.getInterval(), request.getIntervalUnit());
         return current;
@@ -65,6 +70,7 @@ public class ResetPolicyService {
             throw new BadRequestException("해당 resetType에서는 weekStartDay를 사용할 수 없습니다.");
         try {
             ResetPolicyValidator.validate(name, resetType, resetTime, timezone, weekStartDay, active, interval, intervalUnit);
+            validateQuestReferences(current, resetType, resetTime, timezone, weekStartDay, active, interval, intervalUnit);
             current.update(name, resetType, resetTime, timezone, weekStartDay, active, interval, intervalUnit);
             return current;
         } catch (IllegalArgumentException ex) {
@@ -94,5 +100,32 @@ public class ResetPolicyService {
                     request.getTimezone(), request.getWeekStartDay(), request.getActive(), request.getInterval(),
                     request.getIntervalUnit());
         } catch (IllegalArgumentException ex) { throw new BadRequestException(ex.getMessage()); }
+    }
+
+    private void validateQuestReferences(
+            ResetPolicy current,
+            ResetType resetType,
+            java.time.LocalTime resetTime,
+            String timezone,
+            java.time.DayOfWeek weekStartDay,
+            Boolean active,
+            Integer interval,
+            IntervalUnit intervalUnit
+    ) {
+        boolean referenced = questRepository.existsByResetPolicy_ResetPolicyId(current.getResetPolicyId());
+        boolean ruleChanged = !Objects.equals(current.getResetType(), resetType)
+                || !Objects.equals(current.getResetTime(), resetTime == null ? java.time.LocalTime.MIDNIGHT : resetTime)
+                || !Objects.equals(current.getTimezone(), timezone)
+                || !Objects.equals(current.getWeekStartDay(), weekStartDay)
+                || !Objects.equals(current.getInterval(), interval)
+                || !Objects.equals(current.getIntervalUnit(), intervalUnit);
+
+        if (referenced && ruleChanged) {
+            throw new BadRequestException("Quest에서 사용 중인 ResetPolicy의 초기화 규칙은 변경할 수 없습니다.");
+        }
+        if (Boolean.FALSE.equals(active)
+                && questRepository.existsByResetPolicy_ResetPolicyIdAndActiveTrue(current.getResetPolicyId())) {
+            throw new BadRequestException("활성 Quest가 사용 중인 ResetPolicy는 비활성화할 수 없습니다.");
+        }
     }
 }
