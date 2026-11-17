@@ -1,6 +1,7 @@
 package com.ilque.domain.execution.service;
 
 import com.ilque.domain.execution.entity.QuestExecution;
+import com.ilque.domain.execution.entity.ExecutionStatus;
 import com.ilque.domain.execution.repository.QuestExecutionRepository;
 import com.ilque.domain.quest.entity.Quest;
 import com.ilque.domain.quest.entity.RecurrenceType;
@@ -60,6 +61,38 @@ public class ExecutionService {
         }
 
         return findOrCreate(quest, period.start(), period.end());
+    }
+
+    @Transactional
+    public QuestExecution start(Long questId) {
+        QuestExecution execution = ensureCurrentExecution(questId, Instant.now());
+        if (execution == null) {
+            throw new BadRequestException("현재 날짜는 해당 CUSTOM Quest의 수행일이 아닙니다.");
+        }
+        if (execution.getStatus() == ExecutionStatus.IN_PROGRESS) {
+            return execution;
+        }
+        execution.start(Instant.now());
+        return execution;
+    }
+
+    @Transactional
+    public QuestExecution skip(Long questExecutionId) {
+        QuestExecution execution = findExecution(questExecutionId);
+        execution.skip();
+        return execution;
+    }
+
+    @Transactional
+    public QuestExecution markRestDay(Long questExecutionId) {
+        QuestExecution execution = findExecution(questExecutionId);
+        execution.markRestDay();
+        return execution;
+    }
+
+    private QuestExecution findExecution(Long questExecutionId) {
+        return questExecutionRepository.findById(questExecutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("해당 QuestExecution을 찾을 수 없습니다."));
     }
 
     private QuestExecution findOrCreate(Quest quest, Instant periodStart, Instant periodEnd) {
