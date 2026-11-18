@@ -10,6 +10,8 @@ import com.ilque.domain.quest.entity.RecurrenceType;
 import com.ilque.domain.quest.repository.QuestRepository;
 import com.ilque.domain.resetpolicy.calculator.ResetBoundaryCalculator;
 import com.ilque.domain.resetpolicy.entity.ResetType;
+import com.ilque.domain.user.entity.UserStatisticsSummary;
+import com.ilque.domain.user.repository.UserStatisticsSummaryRepository;
 import com.ilque.global.error.BadRequestException;
 import com.ilque.global.error.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -29,6 +33,7 @@ public class ExecutionService {
     private final QuestRepository questRepository;
     private final QuestExecutionRepository questExecutionRepository;
     private final ResetBoundaryCalculator resetBoundaryCalculator;
+    private final UserStatisticsSummaryRepository userStatisticsSummaryRepository;
 
     @Transactional
     public QuestExecution ensureCurrentExecution(Long questId, Instant now) {
@@ -54,6 +59,7 @@ public class ExecutionService {
         }
 
         validatePolicyCombination(quest);
+        recoverMissedExecutions(quest, now);
         ResetBoundaryCalculator.PeriodBoundary period = resetBoundaryCalculator.calculateCurrentPeriod(
                 quest.getCreatedAt(), now, quest.getResetPolicy());
 
@@ -63,6 +69,65 @@ public class ExecutionService {
         }
 
         return findOrCreate(quest, period.start(), period.end());
+    }
+
+    private void recoverMissedExecutions(Quest quest, Instant now) {
+        ResetBoundaryCalculator.PeriodBoundary current = resetBoundaryCalculator.calculateCurrentPeriod(
+                quest.getCreatedAt(), now, quest.getResetPolicy());
+        Instant latestProcessed = quest.getLastProcessedResetAt();
+        if (latestProcessed != null && !latestProcessed.isBefore(current.start())) {
+            return;
+        }
+
+        List<ResetBoundaryCalculator.PeriodBoundary> missingPeriods = findMissingPeriods(quest, current);
+        List<ResetBoundaryCalculator.PeriodBoundary> eligibleMissingPeriods = missingPeriods.stream()
+                .filter(period -> isExecutionTarget(quest, period.start()))
+                .filter(period -> questExecutionRepository
+                        .findByQuest_QuestIdAndPeriodStart(quest.getQuestId(), period.start()).isEmpty())
+                .toList();
+
+        int summaryCount = Math.max(0, eligibleMissingPeriods.size() - 7);
+        if (summaryCount > 0) {
+            UserStatisticsSummary summary = userStatisticsSummaryRepository
+                    .findByUser_UserId(quest.getUser().getUserId())
+                    .orElseGet(() -> userStatisticsSummaryRepository
+                            .save(UserStatisticsSummary.create(quest.getUser())));
+            summary.addLongTermMissedCount(summaryCount);
+        }
+
+        int firstDetailedIndex = Math.max(0, eligibleMissingPeriods.size() - 7);
+        for (ResetBoundaryCalculator.PeriodBoundary period : eligibleMissingPeriods.subList(firstDetailedIndex,
+                eligibleMissingPeriods.size())) {
+            QuestExecution execution = QuestExecution.create(quest, period.start(), period.end());
+            execution.markMissed();
+            questExecutionRepository.save(execution);
+        }
+        quest.markResetProcessed(current.start());
+    }
+
+    private List<ResetBoundaryCalculator.PeriodBoundary> findMissingPeriods(
+            Quest quest,
+            ResetBoundaryCalculator.PeriodBoundary current
+    ) {
+        List<ResetBoundaryCalculator.PeriodBoundary> periods = new ArrayList<>();
+        Instant firstBoundary = resetBoundaryCalculator.calculateFirstBoundary(
+                quest.getCreatedAt(), quest.getResetPolicy());
+        if (firstBoundary.isAfter(current.start())) {
+            return periods;
+        }
+
+        ResetBoundaryCalculator.PeriodBoundary period = new ResetBoundaryCalculator.PeriodBoundary(
+                quest.getCreatedAt(), firstBoundary);
+        while (period.start().isBefore(current.start())) {
+            if (quest.getLastProcessedResetAt() == null
+                    || period.start().isAfter(quest.getLastProcessedResetAt())) {
+                periods.add(period);
+            }
+            Instant nextBoundary = resetBoundaryCalculator.calculateNextBoundary(
+                    period.end(), quest.getResetPolicy());
+            period = new ResetBoundaryCalculator.PeriodBoundary(period.end(), nextBoundary);
+        }
+        return periods;
     }
 
     @Transactional
@@ -192,5 +257,12 @@ public class ExecutionService {
     private boolean isTargetDay(Quest quest, Instant periodStart, String timezone) {
         DayOfWeek dayOfWeek = periodStart.atZone(ZoneId.of(timezone)).getDayOfWeek();
         return quest.getCustomDays().contains(dayOfWeek);
+    }
+
+    private boolean isExecutionTarget(Quest quest, Instant periodStart) {
+        if (quest.getRecurrenceType() != RecurrenceType.CUSTOM) {
+            return true;
+        }
+        return isTargetDay(quest, periodStart, quest.getResetPolicy().getTimezone());
     }
 }

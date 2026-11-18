@@ -124,6 +124,20 @@ public class ResetBoundaryCalculator {
         return new PeriodBoundary(periodStart, periodEnd);
     }
 
+    public Instant calculateNextBoundary(Instant boundaryInstant, ResetPolicy policy) {
+        if (boundaryInstant == null || policy == null) {
+            throw new IllegalArgumentException("경계 시각과 정책은 필수입니다.");
+        }
+        ZoneId zoneId = ZoneId.of(policy.getTimezone());
+        LocalDate boundaryDate = boundaryInstant.atZone(zoneId).toLocalDate();
+        LocalDate nextDate = switch (policy.getResetType()) {
+            case DAILY -> boundaryDate.plusDays(1);
+            case WEEKLY -> boundaryDate.plusWeeks(1);
+            case CUSTOM -> throw new IllegalArgumentException("QuestExecution에서는 CUSTOM ResetPolicy를 사용할 수 없습니다.");
+        };
+        return atZone(nextDate, zoneId, policy);
+    }
+
     private LocalDate startOfWeek(LocalDate date, DayOfWeek weekStartDay) {
         if (weekStartDay == null) {
             throw new IllegalArgumentException("weekStartDay는 필수입니다.");

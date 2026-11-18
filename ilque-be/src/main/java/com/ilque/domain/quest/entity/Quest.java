@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -70,6 +71,9 @@ public class Quest extends Base {
 
     @Column(nullable = false)
     private Boolean active = true;
+
+    @Column
+    private Instant lastProcessedResetAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
@@ -193,6 +197,13 @@ public class Quest extends Base {
 
     public void deactivate() {
         this.active = false;
+    }
+
+    public void markResetProcessed(Instant processedAt) {
+        if (processedAt == null) {
+            throw new BadRequestException("processedAt은 필수입니다.");
+        }
+        this.lastProcessedResetAt = processedAt;
     }
 
     @PrePersist
