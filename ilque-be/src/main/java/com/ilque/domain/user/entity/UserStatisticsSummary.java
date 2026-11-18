@@ -32,6 +32,15 @@ public class UserStatisticsSummary extends Base {
     @Column(nullable = false)
     private Long longTermMissedCount = 0L;
 
+    @Column(nullable = false)
+    private Integer currentStreak = 0;
+
+    @Column(nullable = false)
+    private Integer longestStreak = 0;
+
+    @Column
+    private java.time.LocalDate lastCompletedDate;
+
     private UserStatisticsSummary(User user) {
         if (user == null) {
             throw new BadRequestException("user는 필수입니다.");
@@ -49,5 +58,15 @@ public class UserStatisticsSummary extends Base {
             throw new BadRequestException("longTermMissedCount 증분은 0 이상이어야 합니다.");
         }
         this.longTermMissedCount += count;
+    }
+
+    public void updateStreaks(int currentStreak, int longestStreak,
+                              java.time.LocalDate lastCompletedDate) {
+        if (currentStreak < 0 || longestStreak < 0) {
+            throw new BadRequestException("Streak은 0 이상이어야 합니다.");
+        }
+        this.currentStreak = currentStreak;
+        this.longestStreak = longestStreak;
+        this.lastCompletedDate = lastCompletedDate;
     }
 }

@@ -11,6 +11,7 @@ import com.ilque.domain.quest.entity.RecurrenceType;
 import com.ilque.domain.quest.repository.QuestRepository;
 import com.ilque.domain.resetpolicy.calculator.ResetBoundaryCalculator;
 import com.ilque.domain.resetpolicy.entity.ResetType;
+import com.ilque.domain.streak.service.StreakService;
 import com.ilque.domain.user.entity.UserStatisticsSummary;
 import com.ilque.domain.user.repository.UserStatisticsSummaryRepository;
 import com.ilque.global.error.BadRequestException;
@@ -36,6 +37,7 @@ public class ExecutionService {
     private final ResetBoundaryCalculator resetBoundaryCalculator;
     private final UserStatisticsSummaryRepository userStatisticsSummaryRepository;
     private final ExpLevelService expLevelService;
+    private final StreakService streakService;
 
     @Transactional
     public QuestExecution ensureCurrentExecution(Long questId, Instant now) {
@@ -104,6 +106,9 @@ public class ExecutionService {
             execution.markMissed();
             questExecutionRepository.save(execution);
         }
+        if (!eligibleMissingPeriods.isEmpty()) {
+            streakService.recalculate(quest.getUser());
+        }
         quest.markResetProcessed(current.start());
     }
 
@@ -149,6 +154,9 @@ public class ExecutionService {
     public QuestExecution skip(Long questExecutionId) {
         QuestExecution execution = findExecution(questExecutionId);
         execution.skip();
+        if (execution.getQuest() != null) {
+            streakService.recalculate(execution.getQuest().getUser());
+        }
         return execution;
     }
 
@@ -156,6 +164,9 @@ public class ExecutionService {
     public QuestExecution markRestDay(Long questExecutionId) {
         QuestExecution execution = findExecution(questExecutionId);
         execution.markRestDay();
+        if (execution.getQuest() != null) {
+            streakService.recalculate(execution.getQuest().getUser());
+        }
         return execution;
     }
 
@@ -195,6 +206,7 @@ public class ExecutionService {
                     execution.getBaseExp() + execution.getCompletionBonus(),
                     now);
             expLevelService.addEarnedExp(execution.getQuest().getUser(), execution.getEarnedExp());
+            streakService.recalculate(execution.getQuest().getUser());
             return execution;
         }
 
@@ -212,6 +224,7 @@ public class ExecutionService {
                 + (reachesCompletionThreshold ? execution.getCompletionBonus() : 0);
         execution.complete(null, actualDuration, earnedExp, now);
         expLevelService.addEarnedExp(execution.getQuest().getUser(), execution.getEarnedExp());
+        streakService.recalculate(execution.getQuest().getUser());
         return execution;
     }
 

@@ -21,6 +21,8 @@ public interface QuestExecutionRepository extends JpaRepository<QuestExecution, 
             Instant to
     );
 
+    List<QuestExecution> findAllByQuest_User_UserIdOrderByPeriodStartAsc(Long userId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update QuestExecution execution
