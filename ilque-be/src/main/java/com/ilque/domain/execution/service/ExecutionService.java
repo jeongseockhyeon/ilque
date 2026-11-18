@@ -5,6 +5,7 @@ import com.ilque.domain.execution.entity.ExecutionStatus;
 import com.ilque.domain.execution.dto.CompleteExecutionRequest;
 import com.ilque.domain.quest.entity.QuestType;
 import com.ilque.domain.execution.repository.QuestExecutionRepository;
+import com.ilque.domain.exp.service.ExpLevelService;
 import com.ilque.domain.quest.entity.Quest;
 import com.ilque.domain.quest.entity.RecurrenceType;
 import com.ilque.domain.quest.repository.QuestRepository;
@@ -34,6 +35,7 @@ public class ExecutionService {
     private final QuestExecutionRepository questExecutionRepository;
     private final ResetBoundaryCalculator resetBoundaryCalculator;
     private final UserStatisticsSummaryRepository userStatisticsSummaryRepository;
+    private final ExpLevelService expLevelService;
 
     @Transactional
     public QuestExecution ensureCurrentExecution(Long questId, Instant now) {
@@ -192,6 +194,7 @@ public class ExecutionService {
                     null,
                     execution.getBaseExp() + execution.getCompletionBonus(),
                     now);
+            expLevelService.addEarnedExp(execution.getQuest().getUser(), execution.getEarnedExp());
             return execution;
         }
 
@@ -208,6 +211,7 @@ public class ExecutionService {
         int earnedExp = execution.getBaseExp() + timeExp
                 + (reachesCompletionThreshold ? execution.getCompletionBonus() : 0);
         execution.complete(null, actualDuration, earnedExp, now);
+        expLevelService.addEarnedExp(execution.getQuest().getUser(), execution.getEarnedExp());
         return execution;
     }
 

@@ -21,4 +21,26 @@ public class User extends Base {
 
     @Column(nullable = false, length = 50)
     private String displayName;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Long totalExp = 0L;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer level = 1;
+
+    public void addExp(long earnedExp) {
+        if (earnedExp < 0) {
+            throw new IllegalArgumentException("earnedExp는 0 이상이어야 합니다.");
+        }
+        this.totalExp += earnedExp;
+        while (this.totalExp >= requiredExp(this.level)) {
+            this.level++;
+        }
+    }
+
+    private long requiredExp(int currentLevel) {
+        return 100L + ((long) (currentLevel - 1) * 50L);
+    }
 }
