@@ -157,6 +157,19 @@ public class ExecutionService {
         return execution;
     }
 
+    @Transactional(readOnly = true)
+    public List<QuestExecution> findHistory(Instant from, Instant to) {
+        if (from == null || to == null) {
+            throw new BadRequestException("from과 to는 필수입니다.");
+        }
+        if (!from.isBefore(to)) {
+            throw new BadRequestException("from은 to보다 이전이어야 합니다.");
+        }
+        return questExecutionRepository
+                .findAllByPeriodStartGreaterThanEqualAndPeriodStartLessThanOrderByPeriodStartDescCompletedAtDesc(
+                        from, to);
+    }
+
     @Transactional
     public QuestExecution complete(Long questExecutionId, CompleteExecutionRequest request) {
         QuestExecution execution = findExecution(questExecutionId);

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface QuestExecutionRepository extends JpaRepository<QuestExecution, Long> {
@@ -14,6 +15,11 @@ public interface QuestExecutionRepository extends JpaRepository<QuestExecution, 
     Optional<QuestExecution> findByQuest_QuestIdAndPeriodStart(Long questId, Instant periodStart);
 
     boolean existsByQuest_QuestIdAndPeriodStart(Long questId, Instant periodStart);
+
+    List<QuestExecution> findAllByPeriodStartGreaterThanEqualAndPeriodStartLessThanOrderByPeriodStartDescCompletedAtDesc(
+            Instant from,
+            Instant to
+    );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

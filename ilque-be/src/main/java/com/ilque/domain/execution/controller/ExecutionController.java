@@ -5,11 +5,10 @@ import com.ilque.domain.execution.dto.CompleteExecutionRequest;
 import com.ilque.domain.execution.service.ExecutionService;
 import com.ilque.global.response.ApiResponseEnvelope;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -43,5 +42,16 @@ public class ExecutionController {
     ) {
         return ApiResponseEnvelope.success(
                 QuestExecutionResponse.from(executionService.complete(questExecutionId, request)));
+    }
+
+    @GetMapping("/executions/history")
+    public ApiResponseEnvelope<List<QuestExecutionResponse>> history(
+            @RequestParam Instant from,
+            @RequestParam Instant to
+    ) {
+        return ApiResponseEnvelope.success(
+                executionService.findHistory(from, to).stream()
+                        .map(QuestExecutionResponse::from)
+                        .toList());
     }
 }
