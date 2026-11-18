@@ -3,6 +3,7 @@ package com.ilque.domain.resetpolicy.calculator;
 import com.ilque.domain.resetpolicy.entity.IntervalUnit;
 import com.ilque.domain.resetpolicy.entity.ResetPolicy;
 import com.ilque.domain.resetpolicy.entity.ResetType;
+import org.springframework.stereotype.Component;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -10,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
+@Component
 public class ResetBoundaryCalculator {
 
     public record PeriodBoundary(Instant start, Instant end) {

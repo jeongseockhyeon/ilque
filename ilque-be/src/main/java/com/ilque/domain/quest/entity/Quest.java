@@ -66,6 +66,9 @@ public class Quest extends Base {
     private Integer expPerMinute;
 
     @Column(nullable = false)
+    private Integer completionBonus;
+
+    @Column(nullable = false)
     private Boolean active = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -103,6 +106,7 @@ public class Quest extends Base {
         this.targetTimeMinutes = targetTimeMinutes;
         this.baseExp = difficulty.getBaseExp();
         this.expPerMinute = difficulty.getExpPerMinute();
+        this.completionBonus = difficulty.getCompletionBonus();
         this.active = true;
         this.category = category;
         this.resetPolicy = resetPolicy;
@@ -173,6 +177,7 @@ public class Quest extends Base {
         this.difficulty = requiredDifficulty;
         this.baseExp = requiredDifficulty.getBaseExp();
         this.expPerMinute = requiredDifficulty.getExpPerMinute();
+        this.completionBonus = requiredDifficulty.getCompletionBonus();
         this.targetCount = targetCount;
         this.targetTimeMinutes = targetTimeMinutes;
         this.category = category;

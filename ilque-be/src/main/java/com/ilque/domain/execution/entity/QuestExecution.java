@@ -86,6 +86,9 @@ public class QuestExecution extends Base {
     @Column(nullable = false)
     private Integer expPerMinute;
 
+    @Column(nullable = false)
+    private Integer completionBonus;
+
     @Column
     private Integer earnedExp;
 
@@ -115,6 +118,7 @@ public class QuestExecution extends Base {
         this.targetDuration = quest.getTargetTimeMinutes();
         this.baseExp = quest.getBaseExp();
         this.expPerMinute = quest.getExpPerMinute();
+        this.completionBonus = quest.getCompletionBonus();
         validateState();
     }
 
@@ -162,6 +166,21 @@ public class QuestExecution extends Base {
         this.status = ExecutionStatus.COMPLETED;
     }
 
+    public void recordProgress(Integer actualCount, Integer actualDuration, Instant startedAt) {
+        if (status != ExecutionStatus.PENDING && status != ExecutionStatus.IN_PROGRESS) {
+            throw new BadRequestException("PENDING 또는 IN_PROGRESS 상태에서만 진행량을 기록할 수 있습니다.");
+        }
+        if (startedAt == null) {
+            throw new BadRequestException("startedAt은 필수입니다.");
+        }
+        this.actualCount = actualCount;
+        this.actualDuration = actualDuration;
+        if (this.startedAt == null) {
+            this.startedAt = startedAt;
+        }
+        this.status = ExecutionStatus.IN_PROGRESS;
+    }
+
     public void markMissed() {
         requireStatus(ExecutionStatus.PENDING, "PENDING 상태에서만 MISSED로 지정할 수 있습니다.");
         this.status = ExecutionStatus.MISSED;
@@ -193,6 +212,9 @@ public class QuestExecution extends Base {
         }
         if (expPerMinute == null || expPerMinute < 0) {
             throw new BadRequestException("expPerMinute은 0 이상이어야 합니다.");
+        }
+        if (completionBonus == null || completionBonus < 0) {
+            throw new BadRequestException("completionBonus는 0 이상이어야 합니다.");
         }
         if (targetCount != null && targetCount < 1) {
             throw new BadRequestException("targetCount는 1 이상이어야 합니다.");

@@ -2,6 +2,8 @@ package com.ilque.domain.execution.service;
 
 import com.ilque.domain.execution.entity.QuestExecution;
 import com.ilque.domain.execution.entity.ExecutionStatus;
+import com.ilque.domain.execution.dto.CompleteExecutionRequest;
+import com.ilque.domain.quest.entity.QuestType;
 import com.ilque.domain.execution.repository.QuestExecutionRepository;
 import com.ilque.domain.quest.entity.Quest;
 import com.ilque.domain.quest.entity.RecurrenceType;
@@ -88,6 +90,66 @@ public class ExecutionService {
         QuestExecution execution = findExecution(questExecutionId);
         execution.markRestDay();
         return execution;
+    }
+
+    @Transactional
+    public QuestExecution complete(Long questExecutionId, CompleteExecutionRequest request) {
+        QuestExecution execution = findExecution(questExecutionId);
+        if (execution.getStatus() == ExecutionStatus.COMPLETED) {
+            return execution;
+        }
+        if (request == null) {
+            throw new BadRequestException("완료 요청 본문은 필수입니다.");
+        }
+
+        validateCompleteRequest(execution, request);
+        Instant now = Instant.now();
+        if (execution.getQuestTypeSnapshot() == QuestType.CHECK) {
+            if (request.actualCount() < execution.getTargetCount()) {
+                execution.recordProgress(request.actualCount(), null, now);
+                return execution;
+            }
+            execution.complete(
+                    request.actualCount(),
+                    null,
+                    execution.getBaseExp() + execution.getCompletionBonus(),
+                    now);
+            return execution;
+        }
+
+        int targetDuration = execution.getTargetDuration();
+        int actualDuration = request.actualDuration();
+        boolean reachesCompletionThreshold = actualDuration * 100 >= targetDuration * 80;
+        boolean partialCompletion = Boolean.TRUE.equals(request.partialCompletion());
+        if (!reachesCompletionThreshold && !partialCompletion) {
+            execution.recordProgress(null, actualDuration, now);
+            return execution;
+        }
+
+        int timeExp = Math.min(actualDuration, targetDuration) * execution.getExpPerMinute();
+        int earnedExp = execution.getBaseExp() + timeExp
+                + (reachesCompletionThreshold ? execution.getCompletionBonus() : 0);
+        execution.complete(null, actualDuration, earnedExp, now);
+        return execution;
+    }
+
+    private void validateCompleteRequest(QuestExecution execution, CompleteExecutionRequest request) {
+        if (execution.getQuestTypeSnapshot() == QuestType.CHECK) {
+            if (request.actualCount() == null || request.actualCount() < 0) {
+                throw new BadRequestException("CHECK Quest의 actualCount는 0 이상이어야 합니다.");
+            }
+            if (request.actualDuration() != null) {
+                throw new BadRequestException("CHECK Quest에서는 actualDuration을 사용할 수 없습니다.");
+            }
+            return;
+        }
+
+        if (request.actualDuration() == null || request.actualDuration() < 0) {
+            throw new BadRequestException("TIME_BASED Quest의 actualDuration은 0 이상이어야 합니다.");
+        }
+        if (request.actualCount() != null) {
+            throw new BadRequestException("TIME_BASED Quest에서는 actualCount를 사용할 수 없습니다.");
+        }
     }
 
     private QuestExecution findExecution(Long questExecutionId) {

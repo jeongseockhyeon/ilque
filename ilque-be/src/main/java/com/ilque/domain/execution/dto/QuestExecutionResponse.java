@@ -23,6 +23,7 @@ public record QuestExecutionResponse(
         Integer actualDuration,
         Integer baseExp,
         Integer expPerMinute,
+        Integer completionBonus,
         Integer earnedExp
 ) {
     public static QuestExecutionResponse from(QuestExecution execution) {
@@ -43,6 +44,7 @@ public record QuestExecutionResponse(
                 execution.getActualDuration(),
                 execution.getBaseExp(),
                 execution.getExpPerMinute(),
+                execution.getCompletionBonus(),
                 execution.getEarnedExp());
     }
 }
