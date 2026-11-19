@@ -3,6 +3,8 @@ package com.ilque.domain.execution.controller;
 import com.ilque.domain.execution.dto.QuestExecutionResponse;
 import com.ilque.domain.execution.dto.CompleteExecutionRequest;
 import com.ilque.domain.execution.service.ExecutionService;
+import com.ilque.domain.focus.dto.FocusSessionResponse;
+import com.ilque.domain.focus.service.FocusService;
 import com.ilque.global.response.ApiResponseEnvelope;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,7 @@ import java.util.List;
 public class ExecutionController {
 
     private final ExecutionService executionService;
+    private final FocusService focusService;
 
     @PostMapping("/quests/{questId}/start")
     public ApiResponseEnvelope<QuestExecutionResponse> start(@PathVariable Long questId) {
@@ -53,5 +56,17 @@ public class ExecutionController {
                 executionService.findHistory(from, to).stream()
                         .map(QuestExecutionResponse::from)
                         .toList());
+    }
+
+    @PostMapping("/quests/{questId}/focus/start")
+    public ApiResponseEnvelope<FocusSessionResponse> startFocus(@PathVariable Long questId) {
+        return ApiResponseEnvelope.success(
+                FocusSessionResponse.from(focusService.start(questId)));
+    }
+
+    @PostMapping("/focus/{focusSessionId}/stop")
+    public ApiResponseEnvelope<FocusSessionResponse> stopFocus(@PathVariable Long focusSessionId) {
+        return ApiResponseEnvelope.success(
+                FocusSessionResponse.from(focusService.stop(focusSessionId)));
     }
 }

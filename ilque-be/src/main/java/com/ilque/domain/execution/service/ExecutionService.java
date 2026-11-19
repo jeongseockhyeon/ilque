@@ -6,6 +6,7 @@ import com.ilque.domain.execution.dto.CompleteExecutionRequest;
 import com.ilque.domain.quest.entity.QuestType;
 import com.ilque.domain.execution.repository.QuestExecutionRepository;
 import com.ilque.domain.exp.service.ExpLevelService;
+import com.ilque.domain.focus.repository.FocusSessionRepository;
 import com.ilque.domain.quest.entity.Quest;
 import com.ilque.domain.quest.entity.RecurrenceType;
 import com.ilque.domain.quest.repository.QuestRepository;
@@ -38,6 +39,7 @@ public class ExecutionService {
     private final UserStatisticsSummaryRepository userStatisticsSummaryRepository;
     private final ExpLevelService expLevelService;
     private final StreakService streakService;
+    private final FocusSessionRepository focusSessionRepository;
 
     @Transactional
     public QuestExecution ensureCurrentExecution(Long questId, Instant now) {
@@ -193,7 +195,9 @@ public class ExecutionService {
             throw new BadRequestException("완료 요청 본문은 필수입니다.");
         }
 
-        validateCompleteRequest(execution, request);
+        boolean hasFocusSession = focusSessionRepository
+                .existsByQuestExecution_QuestExecutionId(execution.getQuestExecutionId());
+        validateCompleteRequest(execution, request, hasFocusSession);
         Instant now = Instant.now();
         if (execution.getQuestTypeSnapshot() == QuestType.CHECK) {
             if (request.actualCount() < execution.getTargetCount()) {
@@ -211,7 +215,9 @@ public class ExecutionService {
         }
 
         int targetDuration = execution.getTargetDuration();
-        int actualDuration = request.actualDuration();
+        int actualDuration = hasFocusSession
+                ? (execution.getActualDuration() == null ? 0 : execution.getActualDuration())
+                : request.actualDuration();
         boolean reachesCompletionThreshold = actualDuration * 100 >= targetDuration * 80;
         boolean partialCompletion = Boolean.TRUE.equals(request.partialCompletion());
         if (!reachesCompletionThreshold && !partialCompletion) {
@@ -228,7 +234,8 @@ public class ExecutionService {
         return execution;
     }
 
-    private void validateCompleteRequest(QuestExecution execution, CompleteExecutionRequest request) {
+    private void validateCompleteRequest(QuestExecution execution, CompleteExecutionRequest request,
+                                         boolean hasFocusSession) {
         if (execution.getQuestTypeSnapshot() == QuestType.CHECK) {
             if (request.actualCount() == null || request.actualCount() < 0) {
                 throw new BadRequestException("CHECK Quest의 actualCount는 0 이상이어야 합니다.");
@@ -239,7 +246,7 @@ public class ExecutionService {
             return;
         }
 
-        if (request.actualDuration() == null || request.actualDuration() < 0) {
+        if (!hasFocusSession && (request.actualDuration() == null || request.actualDuration() < 0)) {
             throw new BadRequestException("TIME_BASED Quest의 actualDuration은 0 이상이어야 합니다.");
         }
         if (request.actualCount() != null) {
