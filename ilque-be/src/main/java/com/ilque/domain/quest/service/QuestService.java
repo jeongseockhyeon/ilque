@@ -2,6 +2,7 @@ package com.ilque.domain.quest.service;
 
 import com.ilque.domain.category.entity.Category;
 import com.ilque.domain.category.repository.CategoryRepository;
+import com.ilque.domain.execution.repository.QuestExecutionRepository;
 import com.ilque.domain.quest.dto.QuestRequest;
 import com.ilque.domain.quest.dto.QuestPatchRequest;
 import com.ilque.domain.quest.dto.QuestResetPolicyRequest;
@@ -35,6 +36,7 @@ public class QuestService {
     private final CategoryRepository categoryRepository;
     private final ResetPolicyRepository resetPolicyRepository;
     private final UserService userService;
+    private final QuestExecutionRepository questExecutionRepository;
 
     public Quest findActiveById(Long id){
         return questRepository.findByQuestIdAndActiveTrue(id)
@@ -78,6 +80,7 @@ public class QuestService {
         Quest quest = questRepository.findById(id)
                 .orElseThrow(ResourceNotFoundException::new);
 
+        questExecutionRepository.detachQuestReferences(id);
         questRepository.delete(quest);
     }
 

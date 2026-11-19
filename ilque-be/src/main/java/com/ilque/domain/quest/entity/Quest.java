@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -66,7 +67,13 @@ public class Quest extends Base {
     private Integer expPerMinute;
 
     @Column(nullable = false)
+    private Integer completionBonus;
+
+    @Column(nullable = false)
     private Boolean active = true;
+
+    @Column
+    private Instant lastProcessedResetAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
@@ -103,6 +110,7 @@ public class Quest extends Base {
         this.targetTimeMinutes = targetTimeMinutes;
         this.baseExp = difficulty.getBaseExp();
         this.expPerMinute = difficulty.getExpPerMinute();
+        this.completionBonus = difficulty.getCompletionBonus();
         this.active = true;
         this.category = category;
         this.resetPolicy = resetPolicy;
@@ -173,6 +181,7 @@ public class Quest extends Base {
         this.difficulty = requiredDifficulty;
         this.baseExp = requiredDifficulty.getBaseExp();
         this.expPerMinute = requiredDifficulty.getExpPerMinute();
+        this.completionBonus = requiredDifficulty.getCompletionBonus();
         this.targetCount = targetCount;
         this.targetTimeMinutes = targetTimeMinutes;
         this.category = category;
@@ -188,6 +197,13 @@ public class Quest extends Base {
 
     public void deactivate() {
         this.active = false;
+    }
+
+    public void markResetProcessed(Instant processedAt) {
+        if (processedAt == null) {
+            throw new BadRequestException("processedAt은 필수입니다.");
+        }
+        this.lastProcessedResetAt = processedAt;
     }
 
     @PrePersist
