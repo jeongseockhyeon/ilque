@@ -1,6 +1,7 @@
 package com.ilque.domain.execution.repository;
 
 import com.ilque.domain.execution.entity.QuestExecution;
+import com.ilque.domain.execution.entity.ExecutionStatus;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,6 +23,8 @@ public interface QuestExecutionRepository extends JpaRepository<QuestExecution, 
     );
 
     List<QuestExecution> findAllByQuest_User_UserIdOrderByPeriodStartAsc(Long userId);
+
+    long countByQuest_User_UserIdAndStatus(Long userId, ExecutionStatus status);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
