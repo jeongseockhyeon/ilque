@@ -3,6 +3,7 @@ package com.ilque.domain.execution.service;
 import com.ilque.domain.execution.entity.QuestExecution;
 import com.ilque.domain.execution.entity.ExecutionStatus;
 import com.ilque.domain.execution.dto.CompleteExecutionRequest;
+import com.ilque.domain.achievement.service.AchievementService;
 import com.ilque.domain.quest.entity.QuestType;
 import com.ilque.domain.execution.repository.QuestExecutionRepository;
 import com.ilque.domain.exp.service.ExpLevelService;
@@ -40,6 +41,7 @@ public class ExecutionService {
     private final ExpLevelService expLevelService;
     private final StreakService streakService;
     private final FocusSessionRepository focusSessionRepository;
+    private final AchievementService achievementService;
 
     @Transactional
     public QuestExecution ensureCurrentExecution(Long questId, Instant now) {
@@ -211,6 +213,7 @@ public class ExecutionService {
                     now);
             expLevelService.addEarnedExp(execution.getQuest().getUser(), execution.getEarnedExp());
             streakService.recalculate(execution.getQuest().getUser());
+            achievementService.checkAndUnlock(execution.getQuest().getUser());
             return execution;
         }
 
@@ -231,6 +234,7 @@ public class ExecutionService {
         execution.complete(null, actualDuration, earnedExp, now);
         expLevelService.addEarnedExp(execution.getQuest().getUser(), execution.getEarnedExp());
         streakService.recalculate(execution.getQuest().getUser());
+        achievementService.checkAndUnlock(execution.getQuest().getUser());
         return execution;
     }
 
