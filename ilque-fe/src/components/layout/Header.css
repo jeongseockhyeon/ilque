@@ -98,3 +98,21 @@
     min-width: 0;
   }
 }
+
+@media (max-width: 480px) {
+  .app-header__title-group h1 {
+    font-size: 24px;
+  }
+
+  .app-header__stat {
+    padding: var(--space-2);
+  }
+
+  .app-header__stat-label {
+    font-size: 9px;
+  }
+
+  .app-header__stat strong {
+    font-size: 12px;
+  }
+}

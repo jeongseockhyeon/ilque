@@ -134,3 +134,14 @@
     grid-column: 2;
   }
 }
+
+@media (max-width: 480px) {
+  .dashboard-placeholder__intro {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .dashboard-placeholder__card {
+    padding: var(--space-4);
+  }
+}
