@@ -1,63 +1,11 @@
 import {
-  Award,
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Gamepad2,
-  History,
-  Settings,
-  Sparkles,
-  Target,
 } from 'lucide-react'
-import type { NavigationItem } from '../../types/navigation'
+import { navigationItems } from '../../types/navigation'
 import { useLayoutStore } from '../../store/layoutStore'
 
 import './Sidebar.css'
-
-const navigationItems: NavigationItem[] = [
-  {
-    key: 'today',
-    label: 'Today',
-    description: '오늘의 Quest와 진행 상태',
-    icon: Target,
-  },
-  {
-    key: 'calendar',
-    label: 'Calendar',
-    description: '일정과 예정된 이벤트',
-    icon: CalendarDays,
-  },
-  {
-    key: 'weekly',
-    label: 'Weekly',
-    description: '주간 활동과 통계',
-    icon: Sparkles,
-  },
-  {
-    key: 'game',
-    label: 'Game',
-    description: '게임 Quest 관리',
-    icon: Gamepad2,
-  },
-  {
-    key: 'achievement',
-    label: 'Achievement',
-    description: '획득한 Achievement',
-    icon: Award,
-  },
-  {
-    key: 'history',
-    label: 'History',
-    description: '수행 기록과 이력',
-    icon: History,
-  },
-  {
-    key: 'settings',
-    label: 'Settings',
-    description: '앱 설정',
-    icon: Settings,
-  },
-]
 
 export function Sidebar() {
   const activeNavigation = useLayoutStore((state) => state.activeNavigation)
