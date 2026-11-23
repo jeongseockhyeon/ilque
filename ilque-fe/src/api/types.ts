@@ -21,3 +21,38 @@ export interface ApiResponse<T> {
   error: ApiError | null;
   timestamp: string;
 }
+
+export type QuestType = 'CHECK' | 'TIME_BASED';
+
+export type QuestExecutionStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'MISSED'
+  | 'SKIPPED'
+  | 'REST_DAY';
+
+export interface QuestExecutionResponse {
+  questExecutionId: number;
+  questId: number | null;
+  originalQuestId: number;
+  questTitleSnapshot: string;
+  questTypeSnapshot: QuestType;
+  periodStart: string;
+  periodEnd: string | null;
+  status: QuestExecutionStatus;
+  startedAt: string | null;
+  completedAt: string | null;
+  targetCount: number | null;
+  actualCount: number | null;
+  targetDuration: number | null;
+  actualDuration: number | null;
+  baseExp: number;
+  expPerMinute: number;
+  completionBonus: number;
+  earnedExp: number | null;
+}
+
+export interface TodayResponse {
+  executions: QuestExecutionResponse[];
+}
