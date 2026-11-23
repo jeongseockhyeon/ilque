@@ -53,6 +53,12 @@ export interface QuestExecutionResponse {
   earnedExp: number | null;
 }
 
+export interface CompleteExecutionRequest {
+  actualCount?: number;
+  actualDuration?: number;
+  partialCompletion?: boolean;
+}
+
 export interface TodayResponse {
   executions: QuestExecutionResponse[];
 }
