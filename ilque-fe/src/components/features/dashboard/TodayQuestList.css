@@ -101,6 +101,105 @@
   font-size: 13px;
 }
 
+.today-quest-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.today-quest-card__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.today-quest-card__action:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.today-quest-card__action--complete {
+  color: var(--color-text-strong);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.today-quest-card__action--skip {
+  color: var(--color-warning);
+  background: transparent;
+  border-color: rgba(242, 200, 107, 0.5);
+}
+
+.today-quest-card__action--cancel {
+  color: var(--color-text-muted);
+  background: transparent;
+}
+
+.today-quest-card__form,
+.today-quest-card__confirmation {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.today-quest-card__form label,
+.today-quest-card__confirmation p {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.today-quest-card__form input[type='number'] {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-strong);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.today-quest-card__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 400 !important;
+}
+
+.today-quest-card__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.today-quest-card__inline-error,
+.today-quest-card__error {
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+.today-quest-card__pending {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.today-quest-card__spinner {
+  animation: today-quest-list-spin 900ms linear infinite;
+}
+
 .today-quest-list__state {
   display: grid;
   justify-items: center;
