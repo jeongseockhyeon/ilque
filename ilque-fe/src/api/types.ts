@@ -62,3 +62,13 @@ export interface CompleteExecutionRequest {
 export interface TodayResponse {
   executions: QuestExecutionResponse[];
 }
+
+export interface DashboardResponse {
+  totalExp: number;
+  level: number;
+  currentLevelExp: number;
+  nextLevelRequiredExp: number;
+  currentStreak: number;
+  longestStreak: number;
+  nextResetAt: string | null;
+}
