@@ -4,6 +4,7 @@ import com.ilque.domain.resetpolicy.dto.ResetPolicyRequest;
 import com.ilque.domain.resetpolicy.entity.IntervalUnit;
 import com.ilque.domain.resetpolicy.entity.ResetPolicy;
 import com.ilque.domain.resetpolicy.entity.ResetType;
+import com.ilque.domain.quest.repository.QuestRepository;
 import com.ilque.domain.resetpolicy.repository.ResetPolicyRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,10 +24,12 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class ResetPolicyServiceTest {
     @Mock
     private ResetPolicyRepository repository;
+    @Mock
+    private QuestRepository questRepository;
 
     @Test
     void createsValidPolicy() {
-        ResetPolicyService service = new ResetPolicyService(repository);
+        ResetPolicyService service = new ResetPolicyService(repository, questRepository);
         ResetPolicy saved = ResetPolicy.builder().resetPolicyId(1L).name("daily")
                 .resetType(ResetType.DAILY).resetTime(LocalTime.of(5, 0)).timezone("UTC")
                 .active(true).build();
@@ -40,7 +43,7 @@ class ResetPolicyServiceTest {
 
     @Test
     void patchesOnlyProvidedFields() {
-        ResetPolicyService service = new ResetPolicyService(repository);
+        ResetPolicyService service = new ResetPolicyService(repository, questRepository);
         ResetPolicy current = ResetPolicy.builder().resetPolicyId(1L).name("old")
                 .resetType(ResetType.DAILY).resetTime(LocalTime.of(5, 0)).timezone("UTC")
                 .active(true).build();
@@ -60,7 +63,7 @@ class ResetPolicyServiceTest {
     void dailyRejectsExplicitCustomFields() {
         ResetPolicyRequest request = request(ResetType.DAILY, null, null);
         request.setInterval(1);
-        ResetPolicyService service = new ResetPolicyService(repository);
+        ResetPolicyService service = new ResetPolicyService(repository, questRepository);
 
         assertThatThrownBy(() -> service.create(request)).hasMessageContaining("CUSTOM 전용");
         verifyNoInteractions(repository);
@@ -68,7 +71,7 @@ class ResetPolicyServiceTest {
 
     @Test
     void weeklyRequiresWeekStartAndRejectsCustomFields() {
-        ResetPolicyService service = new ResetPolicyService(repository);
+        ResetPolicyService service = new ResetPolicyService(repository, questRepository);
         ResetPolicyRequest missingWeekStart = request(ResetType.WEEKLY, null, null);
         assertThatThrownBy(() -> service.create(missingWeekStart)).isInstanceOf(RuntimeException.class);
         ResetPolicyRequest withCustom = request(ResetType.WEEKLY, 1, IntervalUnit.WEEK);
@@ -80,7 +83,7 @@ class ResetPolicyServiceTest {
     void customDayRejectsExplicitWeekStart() {
         ResetPolicyRequest request = request(ResetType.CUSTOM, 1, IntervalUnit.DAY);
         request.setWeekStartDay(java.time.DayOfWeek.MONDAY);
-        ResetPolicyService service = new ResetPolicyService(repository);
+        ResetPolicyService service = new ResetPolicyService(repository, questRepository);
 
         assertThatThrownBy(() -> service.create(request)).hasMessageContaining("weekStartDay");
         verifyNoInteractions(repository);

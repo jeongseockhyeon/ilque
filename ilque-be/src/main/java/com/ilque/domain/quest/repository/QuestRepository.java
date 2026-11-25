@@ -11,6 +11,9 @@ public interface QuestRepository extends JpaRepository<Quest, Long> {
 
     List<Quest> findAllByActiveTrue();
 
+    @EntityGraph(attributePaths = "resetPolicy")
+    List<Quest> findAllByUser_UserIdAndActiveTrue(Long userId);
+
     List<Quest> findAllByActiveFalse();
 
     Optional<Quest> findByQuestId(Long questId);

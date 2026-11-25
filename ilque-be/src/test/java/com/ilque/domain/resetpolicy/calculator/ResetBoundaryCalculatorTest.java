@@ -63,6 +63,17 @@ class ResetBoundaryCalculatorTest {
         assertThat(calculator.calculateFirstBoundary(instant("2026-10-26T05:00:00Z"), weekly)).isEqualTo(instant("2026-10-26T05:00:00Z"));
     }
 
+    @Test
+    void customBoundaryUsesConfiguredCalendarInterval() {
+        ResetPolicy day = policy(IntervalUnit.DAY, 3, null, "UTC", LocalTime.of(5, 0));
+        assertThat(calculator.calculateNextBoundary(instant("2026-10-27T05:00:00Z"), day))
+                .isEqualTo(instant("2026-10-30T05:00:00Z"));
+
+        ResetPolicy week = policy(IntervalUnit.WEEK, 2, DayOfWeek.MONDAY, "UTC", LocalTime.of(5, 0));
+        assertThat(calculator.calculateNextBoundary(instant("2026-10-26T05:00:00Z"), week))
+                .isEqualTo(instant("2026-11-09T05:00:00Z"));
+    }
+
     private ResetPolicy policy(IntervalUnit unit, int interval, DayOfWeek weekStart, String zone, LocalTime time) {
         return policy(unit, interval, weekStart, zone, time, com.ilque.domain.resetpolicy.entity.ResetType.CUSTOM);
     }

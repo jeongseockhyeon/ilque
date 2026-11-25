@@ -6,6 +6,7 @@ import {
   skipExecution,
 } from '../services/executionService';
 import { todayQueryKey } from '../services/todayService';
+import { dashboardQueryKey } from '../services/dashboardService';
 
 type ExecutionAction = 'complete' | 'skip';
 
@@ -59,6 +60,7 @@ export function useExecutionMutation(): ExecutionMutationState {
           ? await completeExecution(questExecutionId, request ?? {})
           : await skipExecution(questExecutionId);
         await queryClient.invalidateQueries({ queryKey: todayQueryKey });
+        await queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
         return response;
       } catch (error) {
         setErrors((current) => {
