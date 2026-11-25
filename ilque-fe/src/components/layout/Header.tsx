@@ -1,19 +1,39 @@
 import { CircleAlert, Flame, Gauge, LoaderCircle, RotateCcw } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useDashboardQuery } from '../../hooks/useDashboardQuery'
 
 import './Header.css'
 
 export function Header() {
   const { data, error, isError, isLoading, refetch } = useDashboardQuery()
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
   const expProgress = data === undefined || data.nextLevelRequiredExp === 0
     ? 0
     : Math.min(100, Math.max(0, (data.currentLevelExp / data.nextLevelRequiredExp) * 100))
+  const remainingResetTime = data?.nextResetAt === null || data?.nextResetAt === undefined
+    ? null
+    : Math.max(0, new Date(data.nextResetAt).getTime() - currentTime)
 
   const nextResetLabel = data?.nextResetAt === null
     ? '초기화 대상 없음'
     : data?.nextResetAt === undefined
       ? '--'
       : formatDateTime(data.nextResetAt)
+
+  useEffect(() => {
+    if (data?.nextResetAt === null || data?.nextResetAt === undefined) return
+
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [data?.nextResetAt])
+
+  useEffect(() => {
+    if (data?.nextResetAt === null || data?.nextResetAt === undefined) return
+
+    const resetAt = new Date(data.nextResetAt).getTime()
+    const timer = window.setTimeout(() => void refetch(), Math.max(0, resetAt - Date.now()) + 1000)
+    return () => window.clearTimeout(timer)
+  }, [data?.nextResetAt, refetch])
 
   return (
     <header className="app-header">
@@ -47,6 +67,11 @@ export function Header() {
           <RotateCcw aria-hidden="true" size={17} />
           <span className="app-header__stat-label">Next Reset</span>
           <strong>{nextResetLabel}</strong>
+          {remainingResetTime !== null && (
+            <span className="app-header__countdown" aria-label={`Next Reset까지 ${formatRemainingTime(remainingResetTime)}`}>
+              {formatRemainingTime(remainingResetTime)} 후
+            </span>
+          )}
         </div>
       </div>
 
@@ -77,4 +102,17 @@ const dateTimeFormatter = new Intl.DateTimeFormat('ko-KR', {
 
 function formatDateTime(value: string): string {
   return dateTimeFormatter.format(new Date(value))
+}
+
+function formatRemainingTime(milliseconds: number): string {
+  const totalSeconds = Math.floor(milliseconds / 1000)
+  const days = Math.floor(totalSeconds / 86_400)
+  const hours = Math.floor((totalSeconds % 86_400) / 3_600)
+  const minutes = Math.floor((totalSeconds % 3_600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (days > 0) return `${days}일 ${hours}시간`
+  if (hours > 0) return `${hours}시간 ${minutes}분`
+  if (minutes > 0) return `${minutes}분 ${seconds}초`
+  return `${seconds}초`
 }

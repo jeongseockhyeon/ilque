@@ -72,6 +72,14 @@
   white-space: nowrap;
 }
 
+.app-header__countdown {
+  grid-column: 2;
+  color: var(--color-accent-strong);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .app-header__stat--exp {
   min-width: 132px;
 }
