@@ -133,7 +133,10 @@ public class ResetBoundaryCalculator {
         LocalDate nextDate = switch (policy.getResetType()) {
             case DAILY -> boundaryDate.plusDays(1);
             case WEEKLY -> boundaryDate.plusWeeks(1);
-            case CUSTOM -> throw new IllegalArgumentException("QuestExecution에서는 CUSTOM ResetPolicy를 사용할 수 없습니다.");
+            case CUSTOM -> switch (policy.getIntervalUnit()) {
+                case DAY -> boundaryDate.plusDays(policy.getInterval());
+                case WEEK -> boundaryDate.plusWeeks(policy.getInterval());
+            };
         };
         return atZone(nextDate, zoneId, policy);
     }
