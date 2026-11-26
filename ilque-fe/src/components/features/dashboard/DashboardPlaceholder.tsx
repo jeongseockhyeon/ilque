@@ -1,5 +1,6 @@
 import type { NavigationItem } from '../../../types/navigation'
 import { TodayQuestList } from './TodayQuestList'
+import { QuickTodoList } from './QuickTodoList'
 
 import './DashboardPlaceholder.css'
 
@@ -25,6 +26,9 @@ export function DashboardPlaceholder({ activePage }: DashboardPlaceholderProps) 
   }
 
   return (
-    <TodayQuestList />
+    <div className="dashboard-placeholder">
+      <TodayQuestList />
+      <QuickTodoList />
+    </div>
   )
 }

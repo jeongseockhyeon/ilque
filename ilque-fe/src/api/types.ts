@@ -72,3 +72,11 @@ export interface DashboardResponse {
   longestStreak: number;
   nextResetAt: string | null;
 }
+
+export interface QuickTodoResponse {
+  quickTodoId: number;
+  title: string;
+  createdAt: string;
+  completedAt: string | null;
+  active: boolean;
+}
