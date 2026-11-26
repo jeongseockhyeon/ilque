@@ -34,10 +34,9 @@ function seoulDateString(date: Date): string {
   return dateKeyFormatter.format(date);
 }
 
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
+function addDays(date: string, days: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
 function formatEventTime(event: CalendarEventResponse): string {
@@ -78,7 +77,7 @@ function EventItem({ event }: { event: CalendarEventResponse }) {
 
 export function UpcomingEventsList() {
   const [from] = useState(() => seoulDateString(new Date()));
-  const [to] = useState(() => seoulDateString(addDays(new Date(), 7)));
+  const [to] = useState(() => addDays(seoulDateString(new Date()), 7));
   const { data, error, isError, isLoading, refetch } = useUpcomingEventsQuery(from, to);
   const events = data ?? [];
   const groups = groupEvents(events);
