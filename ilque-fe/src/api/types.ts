@@ -72,3 +72,35 @@ export interface DashboardResponse {
   longestStreak: number;
   nextResetAt: string | null;
 }
+
+export interface QuickTodoResponse {
+  quickTodoId: number;
+  title: string;
+  createdAt: string;
+  completedAt: string | null;
+  active: boolean;
+}
+
+export type CalendarEventType = 'GENERAL' | 'GAME_EVENT' | 'GAME_PICKUP' | 'GAME_UPDATE';
+
+export interface CalendarEventResponse {
+  calendarEventId: number;
+  title: string;
+  description: string | null;
+  eventType: CalendarEventType;
+  startAt: string;
+  endAt: string | null;
+  allDay: boolean;
+  categoryId: number | null;
+  reminderAt: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryResponse {
+  categoryId: number;
+  name: string;
+  description: string | null;
+  active: boolean;
+}
