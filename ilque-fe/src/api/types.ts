@@ -97,3 +97,10 @@ export interface CalendarEventResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CategoryResponse {
+  categoryId: number;
+  name: string;
+  description: string | null;
+  active: boolean;
+}

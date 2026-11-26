@@ -2,6 +2,7 @@ import type { NavigationItem } from '../../../types/navigation'
 import { TodayQuestList } from './TodayQuestList'
 import { QuickTodoList } from './QuickTodoList'
 import { UpcomingEventsList } from './UpcomingEventsList'
+import { CalendarEventsPage } from '../calendar/CalendarEventsPage'
 
 import './DashboardPlaceholder.css'
 
@@ -11,6 +12,10 @@ interface DashboardPlaceholderProps {
 
 export function DashboardPlaceholder({ activePage }: DashboardPlaceholderProps) {
   const PageIcon = activePage.icon
+
+  if (activePage.key === 'calendar') {
+    return <CalendarEventsPage />
+  }
 
   if (activePage.key !== 'today') {
     return (

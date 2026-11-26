@@ -1,0 +1,45 @@
+.calendar-events-page { display: grid; max-width: 980px; gap: var(--space-5); margin: 0 auto; }
+.calendar-events-page__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); padding: var(--space-6); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.calendar-events-page__header h1 { margin-top: var(--space-2); }
+.calendar-events-page__header p { margin-top: var(--space-2); color: var(--color-text-muted); }
+.calendar-events-page__header > button,.calendar-events-page__state button { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); color: var(--color-text-strong); background: var(--color-accent); border-radius: var(--radius-sm); font-weight: 700; }
+.calendar-events-page__items { display: grid; gap: var(--space-3); padding: 0; margin: 0; list-style: none; }
+.calendar-events-page__item { overflow: hidden; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.calendar-events-page__event { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4) var(--space-5); color: var(--color-text); text-align: left; background: transparent; }
+.calendar-events-page__event-copy { display: grid; min-width: 0; gap: var(--space-1); }
+.calendar-events-page__event-copy span,.calendar-events-page__event-time { color: var(--color-text-muted); font-size: 13px; }
+.calendar-events-page__event-time { flex: 0 0 auto; }
+.calendar-events-page__details { display: grid; gap: var(--space-2); padding: 0 var(--space-5) var(--space-4); color: var(--color-text-muted); font-size: 13px; }
+.calendar-events-page__details button { display: inline-flex; width: fit-content; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); color: var(--color-text-strong); border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); }
+.calendar-events-page__state { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-12) var(--space-6); color: var(--color-text-muted); text-align: center; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.calendar-events-page__state--error { color: var(--color-danger); }
+.calendar-events-page__state--error p { color: var(--color-text); }
+.calendar-events-page__category-error { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); color: var(--color-danger); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.calendar-events-page__category-error button { text-decoration: underline; }
+.calendar-events-page__spinner { animation: calendar-events-spin 900ms linear infinite; }
+
+.calendar-event-modal__backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: var(--space-5); background: rgba(5, 7, 16, .72); }
+.calendar-event-modal { width: min(100%, 560px); max-height: min(90svh, 820px); overflow: auto; color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-panel); }
+.calendar-event-modal__header { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; padding: var(--space-5) var(--space-6); background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+.calendar-event-modal__header h2 { font-size: 18px; }
+.calendar-event-modal__header button { display: grid; width: 34px; height: 34px; place-items: center; color: var(--color-text-muted); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.calendar-event-modal__form { display: grid; gap: var(--space-4); padding: var(--space-6); }
+.calendar-event-modal__form > label { display: grid; gap: var(--space-2); color: var(--color-text-muted); font-size: 13px; font-weight: 700; }
+.calendar-event-modal__form label span { font-weight: 400; }
+.calendar-event-modal__form input:not([type='checkbox']),.calendar-event-modal__form select,.calendar-event-modal__form textarea { width: 100%; padding: var(--space-3); color: var(--color-text-strong); background: var(--color-surface-soft); border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); }
+.calendar-event-modal__form .calendar-event-modal__checkbox { display: flex; align-items: center; gap: var(--space-2); }
+.calendar-event-modal__checkbox input { accent-color: var(--color-accent); }
+.calendar-event-modal__error { color: var(--color-danger); font-size: 13px; }
+.calendar-event-modal__actions { display: flex; justify-content: flex-end; gap: var(--space-2); padding-top: var(--space-2); }
+.calendar-event-modal__actions button { padding: var(--space-2) var(--space-4); color: var(--color-text-strong); background: var(--color-accent); border-radius: var(--radius-sm); font-weight: 700; }
+.calendar-event-modal__actions .calendar-event-modal__cancel { color: var(--color-text-muted); background: transparent; border: 1px solid var(--color-border-strong); }
+.calendar-event-modal__actions button:disabled { cursor: wait; opacity: .6; }
+
+@keyframes calendar-events-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 600px) {
+  .calendar-events-page__header { align-items: stretch; flex-direction: column; }
+  .calendar-events-page__header > button { justify-content: center; }
+  .calendar-events-page__event { align-items: flex-start; flex-direction: column; }
+  .calendar-event-modal__form { padding: var(--space-4); }
+}
