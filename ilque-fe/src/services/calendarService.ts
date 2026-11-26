@@ -21,8 +21,9 @@ export function fetchUpcomingEvents(from: string, to: string, signal?: AbortSign
   return get<CalendarEventResponse[]>(`/calendar/upcoming?${query.toString()}`, { signal });
 }
 
-export function fetchCalendarEvents(signal?: AbortSignal): Promise<CalendarEventResponse[]> {
-  return get<CalendarEventResponse[]>('/calendar/events', { signal });
+export function fetchCalendarEvents(from: string, to: string, signal?: AbortSignal): Promise<CalendarEventResponse[]> {
+  const query = new URLSearchParams({ from, to });
+  return get<CalendarEventResponse[]>(`/calendar/events?${query.toString()}`, { signal });
 }
 
 export function createCalendarEvent(request: CalendarEventRequest): Promise<CalendarEventResponse> {
