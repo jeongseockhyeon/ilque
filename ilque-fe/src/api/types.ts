@@ -80,3 +80,20 @@ export interface QuickTodoResponse {
   completedAt: string | null;
   active: boolean;
 }
+
+export type CalendarEventType = 'GENERAL' | 'GAME_EVENT' | 'GAME_PICKUP' | 'GAME_UPDATE';
+
+export interface CalendarEventResponse {
+  calendarEventId: number;
+  title: string;
+  description: string | null;
+  eventType: CalendarEventType;
+  startAt: string;
+  endAt: string | null;
+  allDay: boolean;
+  categoryId: number | null;
+  reminderAt: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
