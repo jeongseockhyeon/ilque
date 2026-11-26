@@ -22,8 +22,10 @@ public class CalendarEventController {
     private final CalendarEventService calendarEventService;
 
     @GetMapping("/events")
-    public ApiResponseEnvelope<List<CalendarEventResponse>> findAll() {
-        return ApiResponseEnvelope.success(calendarEventService.findAllActive());
+    public ApiResponseEnvelope<List<CalendarEventResponse>> findAll(
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to) {
+        return ApiResponseEnvelope.success(calendarEventService.findAllActive(from, to));
     }
 
     @GetMapping("/events/{calendarEventId}")

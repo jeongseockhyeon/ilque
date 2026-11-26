@@ -38,6 +38,17 @@ public class CalendarEventService {
                 .stream().map(CalendarEventResponse::from).toList();
     }
 
+    public List<CalendarEventResponse> findAllActive(LocalDate from, LocalDate to) {
+        if (from == null && to == null) {
+            return findAllActive();
+        }
+        validateDateRange(from, to);
+        Instant fromInstant = from.atStartOfDay(DEFAULT_TIME_ZONE).toInstant();
+        Instant toInstant = to.plusDays(1).atStartOfDay(DEFAULT_TIME_ZONE).toInstant();
+        return repository.findOverlappingActiveEvents(requireLocalUser().getUserId(), fromInstant, toInstant)
+                .stream().map(CalendarEventResponse::from).toList();
+    }
+
     public CalendarEventResponse findById(Long id) {
         return CalendarEventResponse.from(findOwnedEvent(id));
     }
