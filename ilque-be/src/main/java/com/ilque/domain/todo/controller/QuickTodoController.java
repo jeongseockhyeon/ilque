@@ -1,6 +1,7 @@
 package com.ilque.domain.todo.controller;
 
 import com.ilque.domain.todo.dto.QuickTodoRequest;
+import com.ilque.domain.todo.dto.QuickTodoPatchRequest;
 import com.ilque.domain.todo.dto.QuickTodoResponse;
 import com.ilque.domain.todo.service.QuickTodoService;
 import com.ilque.global.response.ApiResponseEnvelope;
@@ -38,5 +39,11 @@ public class QuickTodoController {
     @PatchMapping("/{quickTodoId}/complete")
     public ApiResponseEnvelope<QuickTodoResponse> complete(@PathVariable Long quickTodoId) {
         return ApiResponseEnvelope.success(quickTodoService.complete(quickTodoId));
+    }
+
+    @PatchMapping("/{quickTodoId}")
+    public ApiResponseEnvelope<QuickTodoResponse> updateTitle(@PathVariable Long quickTodoId,
+                                                              @Valid @RequestBody QuickTodoPatchRequest request) {
+        return ApiResponseEnvelope.success(quickTodoService.updateTitle(quickTodoId, request));
     }
 }

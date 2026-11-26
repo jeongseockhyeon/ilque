@@ -68,6 +68,16 @@ public class QuickTodo extends Base {
         this.completedAt = completedAt;
     }
 
+    public void updateTitle(String title) {
+        if (!Boolean.TRUE.equals(active)) {
+            throw new BadRequestException("비활성 Quick Todo는 수정할 수 없습니다.");
+        }
+        if (completedAt != null) {
+            throw new BadRequestException("완료된 Quick Todo는 수정할 수 없습니다.");
+        }
+        this.title = validateTitle(title);
+    }
+
     public void deactivate() {
         this.active = false;
     }

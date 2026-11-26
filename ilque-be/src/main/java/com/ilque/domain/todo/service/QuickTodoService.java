@@ -1,6 +1,7 @@
 package com.ilque.domain.todo.service;
 
 import com.ilque.domain.todo.dto.QuickTodoRequest;
+import com.ilque.domain.todo.dto.QuickTodoPatchRequest;
 import com.ilque.domain.todo.dto.QuickTodoResponse;
 import com.ilque.domain.todo.entity.QuickTodo;
 import com.ilque.domain.todo.repository.QuickTodoRepository;
@@ -69,6 +70,19 @@ public class QuickTodoService {
         if (todo.getCompletedAt() == null) {
             todo.complete(Instant.now());
         }
+        return QuickTodoResponse.from(todo);
+    }
+
+    @Transactional
+    public QuickTodoResponse updateTitle(Long quickTodoId, QuickTodoPatchRequest request) {
+        if (request == null) {
+            throw new BadRequestException("요청 본문은 필수입니다.");
+        }
+        User user = requireLocalUser();
+        QuickTodo todo = quickTodoRepository
+                .findByQuickTodoIdAndUser_UserIdAndActiveTrue(quickTodoId, user.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("활성 Quick Todo를 찾을 수 없습니다."));
+        todo.updateTitle(request.title());
         return QuickTodoResponse.from(todo);
     }
 
