@@ -6,7 +6,19 @@
 
 .dashboard-placeholder {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-6);
+}
+
+.dashboard-placeholder > .today-quest-list {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.dashboard-placeholder > .quick-todo-list,
+.dashboard-placeholder > .upcoming-events {
+  width: 100%;
+  max-width: none;
 }
 
 .dashboard-placeholder__intro {
@@ -118,6 +130,15 @@
 @media (max-width: 900px) {
   .dashboard-placeholder__grid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-placeholder {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+
+  .dashboard-placeholder > .today-quest-list {
+    grid-column: auto;
   }
 }
 
