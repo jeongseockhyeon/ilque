@@ -1,11 +1,12 @@
-import { CircleAlert, Flame, Gauge, LoaderCircle, RotateCcw } from 'lucide-react'
+import { Flame, Gauge, RotateCcw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useDashboardQuery } from '../../hooks/useDashboardQuery'
+import { ErrorState, LoadingState } from '../common/DataState'
 
 import './Header.css'
 
 export function Header() {
-  const { data, error, isError, isLoading, refetch } = useDashboardQuery()
+  const { data, error, isError, isLoading, isFetching, refetch } = useDashboardQuery()
   const [currentTime, setCurrentTime] = useState(() => Date.now())
   const expProgress = data === undefined || data.nextLevelRequiredExp === 0
     ? 0
@@ -42,7 +43,12 @@ export function Header() {
         <h1>Today Dashboard</h1>
       </div>
 
-      <div className="app-header__stats" aria-label="모험가 상태 요약" aria-busy={isLoading}>
+      {isLoading ? (
+        <LoadingState className="app-header__state" compact message="모험가 상태를 불러오는 중입니다." />
+      ) : isError && data === undefined ? (
+        <ErrorState className="app-header__state" compact message={error instanceof Error ? error.message : 'Dashboard 상태를 불러오지 못했습니다.'} onRetry={() => void refetch()} retrying={isFetching} />
+      ) : (
+      <div className="app-header__stats" aria-label="모험가 상태 요약" aria-busy={isFetching}>
         <div className="app-header__stat">
           <Gauge aria-hidden="true" size={18} />
           <span className="app-header__stat-label">Level</span>
@@ -74,20 +80,9 @@ export function Header() {
           )}
         </div>
       </div>
-
-      {isLoading && (
-        <div className="app-header__state" role="status">
-          <LoaderCircle className="app-header__spinner" aria-hidden="true" size={15} />
-          Dashboard 상태를 불러오는 중입니다.
-        </div>
       )}
-      {isError && (
-        <div className="app-header__state app-header__state--error" role="alert">
-          <CircleAlert aria-hidden="true" size={15} />
-          <span>{error instanceof Error ? error.message : 'Dashboard 상태를 불러오지 못했습니다.'}</span>
-          <button type="button" onClick={() => void refetch()}>다시 시도</button>
-        </div>
-      )}
+      {data !== undefined && isFetching && <LoadingState className="app-header__refresh-state" compact message="상태 갱신 중" />}
+      {data !== undefined && isError && <ErrorState className="app-header__refresh-state" compact message={error instanceof Error ? error.message : 'Dashboard 상태를 갱신하지 못했습니다.'} onRetry={() => void refetch()} retrying={isFetching} />}
     </header>
   )
 }
