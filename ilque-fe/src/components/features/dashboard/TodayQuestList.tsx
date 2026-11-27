@@ -1,8 +1,9 @@
-import { Check, CircleAlert, ClipboardCheck, Clock3, LoaderCircle, RotateCw, SkipForward, X } from 'lucide-react'
+import { Check, ClipboardCheck, Clock3, LoaderCircle, SkipForward, X } from 'lucide-react'
 import { useState } from 'react'
 import type { CompleteExecutionRequest, QuestExecutionResponse, QuestExecutionStatus, QuestType } from '../../../api/types'
 import { useExecutionMutation } from '../../../hooks/useExecutionMutation'
 import { useTodayQuery } from '../../../hooks/useTodayQuery'
+import { EmptyState, ErrorState, LoadingState } from '../../common/DataState'
 
 import './TodayQuestList.css'
 
@@ -263,7 +264,7 @@ function QuestExecutionCard({
 }
 
 export function TodayQuestList() {
-  const { data, error, isError, isLoading, refetch } = useTodayQuery()
+  const { data, error, isError, isLoading, isFetching, refetch } = useTodayQuery()
   const { isPending, getError, clearError, complete, skip } = useExecutionMutation()
 
   if (isLoading) {
@@ -275,15 +276,12 @@ export function TodayQuestList() {
             <h2 id="today-quest-list-title">오늘의 Quest</h2>
           </div>
         </div>
-        <div className="today-quest-list__state" role="status">
-          <LoaderCircle className="today-quest-list__spinner" aria-hidden="true" size={24} />
-          <p>오늘의 Quest를 불러오는 중입니다.</p>
-        </div>
+        <LoadingState className="today-quest-list__state" message="오늘의 Quest를 불러오는 중입니다." />
       </section>
     )
   }
 
-  if (isError) {
+  if (isError && data === undefined) {
     return (
       <section className="today-quest-list" aria-labelledby="today-quest-list-title">
         <div className="today-quest-list__header">
@@ -292,14 +290,7 @@ export function TodayQuestList() {
             <h2 id="today-quest-list-title">오늘의 Quest</h2>
           </div>
         </div>
-        <div className="today-quest-list__state today-quest-list__state--error" role="alert">
-          <CircleAlert aria-hidden="true" size={24} />
-          <p>{error instanceof Error ? error.message : 'Today 데이터를 불러오지 못했습니다.'}</p>
-          <button type="button" onClick={() => refetch()}>
-            <RotateCw aria-hidden="true" size={16} />
-            다시 시도
-          </button>
-        </div>
+        <ErrorState className="today-quest-list__state" message={error instanceof Error ? error.message : 'Today 데이터를 불러오지 못했습니다.'} onRetry={() => void refetch()} retrying={isFetching} />
       </section>
     )
   }
@@ -317,11 +308,10 @@ export function TodayQuestList() {
         <span className="dashboard-placeholder__badge">{executions.length}개</span>
       </div>
 
+      {isError && <ErrorState className="today-quest-list__inline-state" compact message={error instanceof Error ? error.message : 'Today 데이터를 갱신하지 못했습니다.'} onRetry={() => void refetch()} retrying={isFetching} />}
+      {isFetching && <LoadingState className="today-quest-list__inline-state" compact message="Quest 목록 갱신 중" />}
       {executions.length === 0 ? (
-        <div className="today-quest-list__state" role="status">
-          <ClipboardCheck aria-hidden="true" size={24} />
-          <p>오늘 수행할 Quest가 없습니다.</p>
-        </div>
+        <EmptyState className="today-quest-list__state" icon={<ClipboardCheck aria-hidden="true" size={24} />} message="오늘 수행할 Quest가 없습니다." />
       ) : (
         <ul className="today-quest-list__items">
           {executions.map((execution) => (

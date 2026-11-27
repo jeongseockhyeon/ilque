@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { CalendarDays, CircleAlert, LoaderCircle, RotateCw } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
 import type { CalendarEventResponse, CalendarEventType } from '../../../api/types';
 import { useUpcomingEventsQuery } from '../../../hooks/useUpcomingEventsQuery';
+import { EmptyState, ErrorState, LoadingState } from '../../common/DataState';
 
 import './UpcomingEventsList.css';
 
@@ -78,7 +79,7 @@ function EventItem({ event }: { event: CalendarEventResponse }) {
 export function UpcomingEventsList() {
   const [from] = useState(() => seoulDateString(new Date()));
   const [to] = useState(() => addDays(seoulDateString(new Date()), 7));
-  const { data, error, isError, isLoading, refetch } = useUpcomingEventsQuery(from, to);
+  const { data, error, isError, isLoading, isFetching, refetch } = useUpcomingEventsQuery(from, to);
   const events = data ?? [];
   const groups = groupEvents(events);
 
@@ -94,22 +95,14 @@ export function UpcomingEventsList() {
       </header>
 
       {isLoading ? (
-        <div className="upcoming-events__state" role="status">
-          <LoaderCircle className="upcoming-events__spinner" aria-hidden="true" size={24} />
-          <p>예정된 일정을 불러오는 중입니다.</p>
-        </div>
-      ) : isError ? (
-        <div className="upcoming-events__state upcoming-events__state--error" role="alert">
-          <CircleAlert aria-hidden="true" size={24} />
-          <p>{error instanceof Error ? error.message : '예정된 일정을 불러오지 못했습니다.'}</p>
-          <button type="button" onClick={() => void refetch()}><RotateCw aria-hidden="true" size={16} /> 다시 시도</button>
-        </div>
-      ) : events.length === 0 ? (
-        <div className="upcoming-events__state" role="status">
-          <CalendarDays aria-hidden="true" size={24} />
-          <p>앞으로 7일 동안 예정된 일정이 없습니다.</p>
-        </div>
+        <LoadingState className="upcoming-events__state" message="예정된 일정을 불러오는 중입니다." />
+      ) : isError && data === undefined ? (
+        <ErrorState className="upcoming-events__state" message={error instanceof Error ? error.message : '예정된 일정을 불러오지 못했습니다.'} onRetry={() => void refetch()} retrying={isFetching} />
       ) : (
+        <>
+        {isError && <ErrorState className="upcoming-events__inline-state" compact message={error instanceof Error ? error.message : '예정된 일정을 갱신하지 못했습니다.'} onRetry={() => void refetch()} retrying={isFetching} />}
+        {isFetching && <LoadingState className="upcoming-events__inline-state" compact message="일정 갱신 중" />}
+        {events.length === 0 ? <EmptyState className="upcoming-events__state" icon={<CalendarDays aria-hidden="true" size={24} />} message="앞으로 7일 동안 예정된 일정이 없습니다." /> : (
         <div className="upcoming-events__groups">
           {groups.map(([date, groupedEvents]) => (
             <section className="upcoming-events__day" key={date} aria-label={dateFormatter.format(new Date(`${date}T12:00:00+09:00`))}>
@@ -120,6 +113,8 @@ export function UpcomingEventsList() {
             </section>
           ))}
         </div>
+        )}
+        </>
       )}
     </section>
   );

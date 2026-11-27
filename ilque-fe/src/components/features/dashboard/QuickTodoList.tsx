@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { Check, CircleAlert, ClipboardList, LoaderCircle, Pencil, Plus, RotateCw, X } from 'lucide-react';
+import { Check, ClipboardList, LoaderCircle, Pencil, Plus, X } from 'lucide-react';
 import { useQuickTodosQuery } from '../../../hooks/useQuickTodosQuery';
 import { useQuickTodoMutation } from '../../../hooks/useQuickTodoMutation';
 import type { QuickTodoResponse } from '../../../api/types';
+import { EmptyState, ErrorState, LoadingState } from '../../common/DataState';
 
 import './QuickTodoList.css';
 
@@ -94,7 +95,7 @@ function QuickTodoItem({ todo, date, complete, update, pending, error }: {
 
 export function QuickTodoList() {
   const [date] = useState(() => localDateString(new Date()));
-  const { data, error, isError, isLoading, refetch } = useQuickTodosQuery(date);
+  const { data, error, isError, isLoading, isFetching, refetch } = useQuickTodosQuery(date);
   const mutation = useQuickTodoMutation();
   const [newTitle, setNewTitle] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
@@ -140,24 +141,14 @@ export function QuickTodoList() {
       {createError !== null && <p className="quick-todo-list__item-error" role="alert">{createError}</p>}
 
       {isLoading ? (
-        <div className="quick-todo-list__state" role="status">
-          <LoaderCircle className="quick-todo-list__spinner" aria-hidden="true" size={24} />
-          <p>Quick Todo를 불러오는 중입니다.</p>
-        </div>
-      ) : isError ? (
-        <div className="quick-todo-list__state quick-todo-list__state--error" role="alert">
-          <CircleAlert aria-hidden="true" size={24} />
-          <p>{error instanceof Error ? error.message : 'Quick Todo를 불러오지 못했습니다.'}</p>
-          <button type="button" onClick={() => void refetch()}>
-            <RotateCw aria-hidden="true" size={16} /> 다시 시도
-          </button>
-        </div>
-      ) : todos.length === 0 ? (
-        <div className="quick-todo-list__state" role="status">
-          <ClipboardList aria-hidden="true" size={24} />
-          <p>오늘의 Quick Todo가 없습니다.</p>
-        </div>
+        <LoadingState className="quick-todo-list__state" message="Quick Todo를 불러오는 중입니다." />
+      ) : isError && data === undefined ? (
+        <ErrorState className="quick-todo-list__state" message={error instanceof Error ? error.message : 'Quick Todo를 불러오지 못했습니다.'} onRetry={() => void refetch()} retrying={isFetching} />
       ) : (
+        <>
+        {isError && <ErrorState className="quick-todo-list__inline-state" compact message={error instanceof Error ? error.message : 'Quick Todo를 갱신하지 못했습니다.'} onRetry={() => void refetch()} retrying={isFetching} />}
+        {isFetching && <LoadingState className="quick-todo-list__inline-state" compact message="Quick Todo 갱신 중" />}
+        {todos.length === 0 ? <EmptyState className="quick-todo-list__state" icon={<ClipboardList aria-hidden="true" size={24} />} message="오늘의 Quick Todo가 없습니다." /> : (
         <ul className="quick-todo-list__items">
           {todos.map((todo) => (
             <QuickTodoItem
@@ -171,6 +162,8 @@ export function QuickTodoList() {
             />
           ))}
         </ul>
+        )}
+        </>
       )}
     </section>
   );
